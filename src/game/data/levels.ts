@@ -24,6 +24,10 @@ const pigs: Pig[] = [
   { id: 'pig-12', color: 'green', ammo: 4, mystery: true },
   { id: 'pig-13', color: 'yellow', ammo: 4, mystery: true },
   { id: 'pig-14', color: 'purple', ammo: 4, mystery: true },
+  { id: 'pig-15', color: 'yellow', ammo: 4, mystery: true },
+  { id: 'pig-16', color: 'green', ammo: 3, mystery: true },
+  { id: 'pig-17', color: 'blue', ammo: 3, mystery: true },
+  { id: 'pig-18', color: 'red', ammo: 3, mystery: true },
 ];
 
 export const LEVELS: LevelDefinition[] = [

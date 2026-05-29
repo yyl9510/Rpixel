@@ -15,6 +15,8 @@ declare global {
     __RPIXEL_LOCKED_RESERVE__?: number;
     __RPIXEL_TREASURE_UNLOCKED__?: boolean;
     __RPIXEL_COINS__?: number;
+    __RPIXEL_VISIBLE_RESERVE__?: Array<{ index: number; color: string; locked: boolean; x: number; y: number }>;
+    __RPIXEL_EXPOSED_COLORS__?: string[];
   }
 }
 

@@ -77,6 +77,7 @@ export class GameScene extends Phaser.Scene {
   private reserveLayer?: Phaser.GameObjects.Container;
   private blocksLeftText?: Phaser.GameObjects.Text;
   private coinText?: Phaser.GameObjects.Text;
+  private progressFill?: Phaser.GameObjects.Graphics;
   private treasure?: TreasureState;
   private coins = 10100;
   private totalCells = 0;
@@ -150,6 +151,8 @@ export class GameScene extends Phaser.Scene {
   private drawHud(): void {
     this.addRoundRect(540, 86, 318, 74, 20, 0x0b1534, 0.62, 0x050915, 5);
     this.add.text(540, 51, `Level ${FIRST_LEVEL.id}`, this.textStyle(40)).setOrigin(0.5, 0).setStroke('#06101f', 8);
+    this.addRoundRect(540, 146, 300, 28, 14, 0x071122, 0.7, 0xffffff, 3, 0.25);
+    this.progressFill = this.add.graphics().setDepth(4);
 
     this.addRoundRect(78, 84, 94, 70, 18, 0xffc83d, 1, 0x050915, 5);
     this.add.text(50, 50, '<', this.textStyle(46)).setStroke('#06101f', 8);
@@ -262,7 +265,11 @@ export class GameScene extends Phaser.Scene {
 
     const slotIndex = this.slots.findIndex((slot) => slot === null);
     if (slotIndex === -1) {
-      if (this.slots.every((slot) => slot?.status === 'stuck')) {
+      if (!this.resolvingShooter && this.slots.every((slot) => slot?.status === 'stuck')) {
+        if (this.hasActivatableStuckSlot()) {
+          this.evaluateSlots();
+          return;
+        }
         this.showResult(false, 'NO MOVES');
       }
       return;
@@ -328,6 +335,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.updateDebugState();
+  }
+
+  private hasActivatableStuckSlot(): boolean {
+    return this.slots.some((slot) => slot?.status === 'stuck' && slot.pig.ammo > 0 && Boolean(this.findEdgeTarget(slot.pig.color)));
   }
 
   private queueEvaluation(delay = 110): void {
@@ -643,10 +654,10 @@ export class GameScene extends Phaser.Scene {
       panel.add(this.add.rectangle(0, 25, 72, 92, 0xffc83d).setStrokeStyle(7, 0x8a4c00));
       panel.add(this.add.text(0, 95, title, this.textStyle(40)).setOrigin(0.5, 0).setStroke('#06101f', 9));
       panel.add(this.add.text(0, 164, '+40 coins', this.textStyle(42)).setOrigin(0.5, 0).setStroke('#06101f', 9));
-      panel.add(this.makeResultButton(-170, 250, 'Continue', 0x35c95f, () => this.scene.start('MenuScene')));
+      panel.add(this.makeResultButton(-170, 250, 'Continue', 0x35c95f, () => this.completeLevelAndReturn()));
       panel.add(this.makeResultButton(170, 250, '2X Reward', 0x8590a6, () => {
         this.animateCoinsFrom(540, 930, 40);
-        this.time.delayedCall(520, () => this.scene.start('MenuScene'));
+        this.time.delayedCall(520, () => this.completeLevelAndReturn());
       }));
       return;
     }
@@ -659,12 +670,31 @@ export class GameScene extends Phaser.Scene {
 
   private makeResultButton(x: number, y: number, label: string, color: number, onClick: () => void): Phaser.GameObjects.Container {
     const container = this.add.container(x, y);
+    let fired = false;
+    const trigger = () => {
+      if (fired) {
+        return;
+      }
+      fired = true;
+      onClick();
+    };
+
+    container.setSize(280, 122);
+    container.setInteractive(new Phaser.Geom.Rectangle(-140, -61, 280, 122), Phaser.Geom.Rectangle.Contains);
+    container.on('pointerdown', trigger);
     container.add(this.makeRoundRect(245, 92, 24, color, 1, 0x050915, 6));
     container.add(this.add.text(0, -31, label, this.textStyle(label.length > 8 ? 30 : 36)).setOrigin(0.5, 0).setStroke('#06101f', 8));
-    const zone = this.add.zone(0, 0, 260, 110).setInteractive({ useHandCursor: true });
-    zone.on('pointerdown', onClick);
-    container.add(zone);
+    const hit = this.add.rectangle(0, 0, 280, 122, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', trigger);
+    container.add(hit);
     return container;
+  }
+
+  private completeLevelAndReturn(): void {
+    const stored = Number(window.localStorage.getItem('rpixel-current-level'));
+    const current = Number.isFinite(stored) && stored >= FIRST_LEVEL.id ? stored : FIRST_LEVEL.id;
+    window.localStorage.setItem('rpixel-current-level', String(Math.max(current, FIRST_LEVEL.id) + 1));
+    this.scene.start('MenuScene');
   }
 
   private createPigToken(
@@ -791,6 +821,14 @@ export class GameScene extends Phaser.Scene {
   private updateProgressText(): void {
     const left = this.totalCells - this.clearedCells;
     this.blocksLeftText?.setText(`${left} blocks`);
+    if (this.progressFill) {
+      const progress = this.totalCells === 0 ? 1 : this.clearedCells / this.totalCells;
+      this.progressFill.clear();
+      this.progressFill.fillStyle(0x35c95f, 1);
+      this.progressFill.fillRoundedRect(396, 136, Math.max(14, 288 * progress), 20, 10);
+      this.progressFill.lineStyle(2, 0x99f2b0, 0.9);
+      this.progressFill.strokeRoundedRect(396, 136, Math.max(14, 288 * progress), 20, 10);
+    }
     window.__RPIXEL_BLOCKS_LEFT__ = left;
   }
 
@@ -803,6 +841,26 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_LOCKED_RESERVE__ = this.reserve.slice(0, RESERVE_VISIBLE).filter((pig, index) => this.isReserveLocked(pig, index)).length;
     window.__RPIXEL_TREASURE_UNLOCKED__ = Boolean(this.treasure?.unlocked);
     window.__RPIXEL_COINS__ = this.coins;
+    window.__RPIXEL_VISIBLE_RESERVE__ = this.reserve.slice(0, RESERVE_VISIBLE).map((pig, index) => {
+      const position = this.reservePosition(index);
+      return { index, color: pig.color, locked: this.isReserveLocked(pig, index), x: position.x, y: position.y };
+    });
+    window.__RPIXEL_EXPOSED_COLORS__ = this.getExposedColors();
+  }
+
+  private getExposedColors(): string[] {
+    const colors = new Set<string>();
+    const sides: Side[] = ['bottom', 'right', 'top', 'left'];
+    for (const side of sides) {
+      const lineCount = side === 'top' || side === 'bottom' ? this.cols : this.rows;
+      for (let lineIndex = 0; lineIndex < lineCount; lineIndex += 1) {
+        const cell = this.findVisibleCell(side, lineIndex);
+        if (cell) {
+          colors.add(cell.color);
+        }
+      }
+    }
+    return Array.from(colors);
   }
 
   private formatCoins(value: number): string {
