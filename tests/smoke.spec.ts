@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('loads the menu and starts a pig run', async ({ page }) => {
+test('loads the menu and drives reserve-to-slot gameplay', async ({ page }) => {
   await page.goto('./');
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'menu');
 
@@ -31,7 +31,11 @@ test('loads the menu and starts a pig run', async ({ page }) => {
 
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.8);
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'game');
+  await page.waitForFunction(() => (window.__RPIXEL_RESERVE_LEFT__ ?? 0) > 0);
 
-  await page.mouse.click(box.x + box.width * (160 / 1080), box.y + box.height * (210 / 1920));
-  await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) > 0);
+  await page.mouse.click(box.x + box.width * (142 / 1080), box.y + box.height * (1530 / 1920));
+  await page.waitForFunction(() => window.__RPIXEL_STUCK_SLOTS__ === 1 && window.__RPIXEL_RESERVE_LEFT__ === 9);
+
+  await page.mouse.click(box.x + box.width * (142 / 1080), box.y + box.height * (1530 / 1920));
+  await page.waitForFunction(() => (window.__RPIXEL_BLOCKS_LEFT__ ?? 36) < 36, { timeout: 8_000 });
 });

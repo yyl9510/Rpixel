@@ -6,12 +6,14 @@ export interface Pig {
   id: string;
   color: PigColor;
   ammo: number;
+  mystery?: boolean;
 }
+
+export type PixelCellColor = PigColor | null;
 
 export interface LevelDefinition {
   id: number;
   difficulty: string;
-  grid: PigColor[][];
+  grid: PixelCellColor[][];
   pigs: Pig[];
 }
-
