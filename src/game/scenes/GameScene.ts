@@ -41,6 +41,11 @@ interface BoardCell {
   image: Phaser.GameObjects.Image;
 }
 
+interface TreasureState {
+  unlocked: boolean;
+  container: Phaser.GameObjects.Container;
+}
+
 interface EdgeTarget {
   side: Side;
   lineIndex: number;
@@ -71,6 +76,9 @@ export class GameScene extends Phaser.Scene {
   private slotChromeLayer?: Phaser.GameObjects.Container;
   private reserveLayer?: Phaser.GameObjects.Container;
   private blocksLeftText?: Phaser.GameObjects.Text;
+  private coinText?: Phaser.GameObjects.Text;
+  private treasure?: TreasureState;
+  private coins = 10100;
   private totalCells = 0;
   private clearedCells = 0;
   private gameOver = false;
@@ -95,6 +103,8 @@ export class GameScene extends Phaser.Scene {
     this.gameOver = false;
     this.evaluationQueued = false;
     this.resolvingShooter = null;
+    this.treasure = undefined;
+    this.coins = 10100;
     this.clearedCells = 0;
     this.slots = Array.from({ length: SLOT_CAPACITY }, () => null);
     this.reserve = FIRST_LEVEL.pigs.map((pig) => ({ ...pig }));
@@ -103,6 +113,7 @@ export class GameScene extends Phaser.Scene {
     this.drawBackground();
     this.drawHud();
     this.drawTrack();
+    this.drawTreasure();
     this.drawBoard();
     this.drawSlotChrome();
 
@@ -148,8 +159,22 @@ export class GameScene extends Phaser.Scene {
     this.add.text(935, 54, 'Retry', this.textStyle(32)).setStroke('#06101f', 7);
     this.add.zone(978, 84, 148, 92).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.scene.restart());
 
+    this.add.circle(816, 84, 31, 0xffc937).setStrokeStyle(5, 0x7a4a00);
+    this.coinText = this.add.text(858, 55, this.formatCoins(this.coins), this.textStyle(31)).setStroke('#06101f', 7);
+
     this.blocksLeftText = this.add.text(540, 283, '', this.textStyle(36)).setOrigin(0.5, 0).setStroke('#06101f', 8).setDepth(18);
     this.updateProgressText();
+  }
+
+  private drawTreasure(): void {
+    const container = this.add.container(this.center.x, this.center.y).setDepth(2);
+    container.add(this.makeRoundRect(168, 116, 24, 0x8b4a17, 0.88, 0x050915, 7));
+    container.add(this.makeRoundRect(184, 48, 22, 0xffc83d, 0.92, 0x8a4c00, 5, 1, 0, -44));
+    container.add(this.add.rectangle(0, 5, 184, 20, 0xffd84a, 0.94).setStrokeStyle(4, 0x8a4c00));
+    container.add(this.add.circle(0, 24, 18, 0xffd84a).setStrokeStyle(5, 0x8a4c00));
+    container.add(this.add.text(0, -6, '+40', this.textStyle(30)).setOrigin(0.5, 0).setStroke('#06101f', 6));
+    container.setAlpha(0.42);
+    this.treasure = { unlocked: false, container };
   }
 
   private drawTrack(): void {
@@ -216,7 +241,9 @@ export class GameScene extends Phaser.Scene {
     const visible = this.reserve.slice(0, RESERVE_VISIBLE);
     visible.forEach((pig, index) => {
       const position = this.reservePosition(index);
-      const token = this.createPigToken(pig, position.x, position.y, 0.5, true, () => this.handleReserveClick(index), false, Boolean(pig.mystery));
+      const locked = this.isReserveLocked(pig, index);
+      const token = this.createPigToken(pig, position.x, position.y, 0.5, !locked, () => this.handleReserveClick(index), false, locked);
+      token.container.setAlpha(locked ? 0.74 : 1);
       this.reserveLayer?.add(token.container);
     });
 
@@ -228,9 +255,16 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    const candidate = this.reserve[reserveIndex];
+    if (!candidate || this.isReserveLocked(candidate, reserveIndex)) {
+      return;
+    }
+
     const slotIndex = this.slots.findIndex((slot) => slot === null);
     if (slotIndex === -1) {
-      this.showResult(false, 'NO MOVES');
+      if (this.slots.every((slot) => slot?.status === 'stuck')) {
+        this.showResult(false, 'NO MOVES');
+      }
       return;
     }
 
@@ -269,6 +303,10 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.updateDebugState();
+  }
+
+  private isReserveLocked(pig: Pig, reserveIndex: number): boolean {
+    return Boolean(pig.mystery) && reserveIndex >= RESERVE_COLS;
   }
 
   private evaluateSlots(): void {
@@ -457,9 +495,58 @@ export class GameScene extends Phaser.Scene {
       onComplete: () => cell.image.destroy(),
     });
 
+    this.checkTreasureUnlock();
+
     if (this.clearedCells >= this.totalCells) {
       this.time.delayedCall(260, () => this.showResult(true, `LEVEL ${FIRST_LEVEL.id} COMPLETED!`));
     }
+  }
+
+  private checkTreasureUnlock(): void {
+    if (!this.treasure || this.treasure.unlocked) {
+      return;
+    }
+
+    const centerRows = [Math.floor(this.rows / 2) - 1, Math.floor(this.rows / 2)];
+    const centerCols = [Math.floor(this.cols / 2) - 1, Math.floor(this.cols / 2)];
+    const uncovered = centerRows.every((row) =>
+      centerCols.every((col) => {
+        const cell = this.cells[row]?.[col] ?? null;
+        return cell === null || cell.cleared;
+      }),
+    );
+
+    if (!uncovered) {
+      return;
+    }
+
+    this.treasure.unlocked = true;
+    this.tweens.add({ targets: this.treasure.container, alpha: 1, scale: 1.18, duration: 220, yoyo: true, ease: 'Back.easeOut' });
+    this.time.delayedCall(260, () => this.animateCoinsFrom(this.treasure?.container.x ?? this.center.x, this.treasure?.container.y ?? this.center.y, 40));
+    this.updateDebugState();
+  }
+
+  private animateCoinsFrom(x: number, y: number, amount: number): void {
+    const targetX = 816;
+    const targetY = 84;
+    for (let index = 0; index < 8; index += 1) {
+      const coin = this.add.circle(x + Phaser.Math.Between(-28, 28), y + Phaser.Math.Between(-20, 20), 13, 0xffd84a).setStrokeStyle(4, 0x8a4c00).setDepth(70);
+      this.tweens.add({
+        targets: coin,
+        x: targetX,
+        y: targetY,
+        scale: 0.45,
+        duration: 420 + index * 35,
+        ease: 'Sine.easeInOut',
+        onComplete: () => coin.destroy(),
+      });
+    }
+
+    this.time.delayedCall(620, () => {
+      this.coins += amount;
+      this.coinText?.setText(this.formatCoins(this.coins));
+      this.updateDebugState();
+    });
   }
 
   private finishResolvingShooter(active: ResolvingShooter): void {
@@ -550,13 +637,17 @@ export class GameScene extends Phaser.Scene {
     panel.add(this.makeRoundRect(620, 112, 30, 0xffffff, 0.2, undefined, 0, 1, 0, -168));
 
     if (win) {
+      this.animateCoinsFrom(540, 930, 40);
       panel.add(this.add.text(0, -210, 'TROPHY', this.textStyle(52)).setOrigin(0.5, 0).setStroke('#8a4c00', 10));
       panel.add(this.add.circle(0, -66, 78, 0xffd84a).setStrokeStyle(8, 0x8a4c00));
       panel.add(this.add.rectangle(0, 25, 72, 92, 0xffc83d).setStrokeStyle(7, 0x8a4c00));
       panel.add(this.add.text(0, 95, title, this.textStyle(40)).setOrigin(0.5, 0).setStroke('#06101f', 9));
       panel.add(this.add.text(0, 164, '+40 coins', this.textStyle(42)).setOrigin(0.5, 0).setStroke('#06101f', 9));
       panel.add(this.makeResultButton(-170, 250, 'Continue', 0x35c95f, () => this.scene.start('MenuScene')));
-      panel.add(this.makeResultButton(170, 250, '2X Reward', 0x8590a6, () => this.scene.start('MenuScene')));
+      panel.add(this.makeResultButton(170, 250, '2X Reward', 0x8590a6, () => {
+        this.animateCoinsFrom(540, 930, 40);
+        this.time.delayedCall(520, () => this.scene.start('MenuScene'));
+      }));
       return;
     }
 
@@ -593,7 +684,7 @@ export class GameScene extends Phaser.Scene {
 
     const image = mystery ? this.makeMysteryToken() : this.add.image(0, 0, `pig-${pig.color}`);
     const badge = this.add.circle(50, -44, 28, 0xffffff).setStrokeStyle(6, 0x050915);
-    const ammoText = this.add.text(50, -66, String(pig.ammo), this.textStyle(34)).setOrigin(0.5, 0).setStroke('#06101f', 7);
+    const ammoText = this.add.text(50, -66, mystery ? '?' : String(pig.ammo), this.textStyle(34)).setOrigin(0.5, 0).setStroke('#06101f', 7);
     container.add([shadow, barrel, image, badge, ammoText]);
 
     if (interactive) {
@@ -709,6 +800,13 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_SLOTS_FILLED__ = this.slots.filter(Boolean).length;
     window.__RPIXEL_STUCK_SLOTS__ = this.slots.filter((slot) => slot?.status === 'stuck').length;
     window.__RPIXEL_RESERVE_LEFT__ = this.reserve.length;
+    window.__RPIXEL_LOCKED_RESERVE__ = this.reserve.slice(0, RESERVE_VISIBLE).filter((pig, index) => this.isReserveLocked(pig, index)).length;
+    window.__RPIXEL_TREASURE_UNLOCKED__ = Boolean(this.treasure?.unlocked);
+    window.__RPIXEL_COINS__ = this.coins;
+  }
+
+  private formatCoins(value: number): string {
+    return value >= 1000 ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k` : String(value);
   }
 
   private addRoundRect(

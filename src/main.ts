@@ -12,6 +12,9 @@ declare global {
     __RPIXEL_SLOTS_FILLED__?: number;
     __RPIXEL_STUCK_SLOTS__?: number;
     __RPIXEL_RESERVE_LEFT__?: number;
+    __RPIXEL_LOCKED_RESERVE__?: number;
+    __RPIXEL_TREASURE_UNLOCKED__?: boolean;
+    __RPIXEL_COINS__?: number;
   }
 }
 

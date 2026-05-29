@@ -10,16 +10,20 @@ const grid: PixelCellColor[][] = [
 ];
 
 const pigs: Pig[] = [
-  { id: 'pig-1', color: 'purple', ammo: 4 },
-  { id: 'pig-2', color: 'red', ammo: 3 },
-  { id: 'pig-3', color: 'blue', ammo: 4 },
-  { id: 'pig-4', color: 'green', ammo: 4 },
-  { id: 'pig-5', color: 'yellow', ammo: 4 },
-  { id: 'pig-6', color: 'purple', ammo: 3 },
-  { id: 'pig-7', color: 'red', ammo: 3 },
-  { id: 'pig-8', color: 'blue', ammo: 4, mystery: true },
-  { id: 'pig-9', color: 'yellow', ammo: 4, mystery: true },
-  { id: 'pig-10', color: 'green', ammo: 3, mystery: true },
+  { id: 'pig-1', color: 'purple', ammo: 3 },
+  { id: 'pig-2', color: 'purple', ammo: 3 },
+  { id: 'pig-3', color: 'purple', ammo: 3 },
+  { id: 'pig-4', color: 'purple', ammo: 3 },
+  { id: 'pig-5', color: 'purple', ammo: 3 },
+  { id: 'pig-6', color: 'red', ammo: 6 },
+  { id: 'pig-7', color: 'blue', ammo: 6 },
+  { id: 'pig-8', color: 'green', ammo: 6, mystery: true },
+  { id: 'pig-9', color: 'yellow', ammo: 6, mystery: true },
+  { id: 'pig-10', color: 'red', ammo: 4, mystery: true },
+  { id: 'pig-11', color: 'blue', ammo: 4, mystery: true },
+  { id: 'pig-12', color: 'green', ammo: 4, mystery: true },
+  { id: 'pig-13', color: 'yellow', ammo: 4, mystery: true },
+  { id: 'pig-14', color: 'purple', ammo: 4, mystery: true },
 ];
 
 export const LEVELS: LevelDefinition[] = [
