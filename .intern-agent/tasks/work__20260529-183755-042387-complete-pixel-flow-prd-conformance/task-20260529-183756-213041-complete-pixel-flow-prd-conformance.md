@@ -64,8 +64,8 @@ Continue implementation until the H5 game practically conforms to the provided P
 - Local validation: npm run check passed; npm run test:smoke passed with 3/3 tests.
 - Playwright visual artifacts generated under ignored test-results/: visual-menu.png, visual-settings.png, visual-gameplay.png, visual-stuck-slot.png, visual-win.png.
 - Latest visual state check: canvas 1080x1920, nonblank luma/alpha samples, stuck-slot state blocks=37 slots=1 stuck=1 locked=7, win state blocks=0 treasure=true.
-- Current main deployment: merge commit 007f1a3 pushed to origin/main.
-- GitHub Actions verification: Deploy GitHub Pages run 26657336598 for 007f1a3 completed successfully.
+- App deployment verification: the Pixel Flow app build was merged to origin/main and deployed by GitHub Pages successfully.
+- Final evidence-only task-record commits do not change the bundled app output; the public app bundle remains assets/index-b8oKv3_r.js.
 - Public Pages verification: https://yyl9510.github.io/Rpixel/ loads assets/index-b8oKv3_r.js.
 - Public Playwright smoke: menu canvas nonblank, settings popup renders, reserve-to-stuck state verified (blocks=37, slots=1, stuck=1, reserve=17, locked=7), full clear reaches win, Continue returns to menu with rpixel-current-level=1101.
 
@@ -83,3 +83,5 @@ Continue implementation until the H5 game practically conforms to the provided P
   - pushed_commit: 9d27b3b
 - 2026-05-29T19:26:34Z: Record final deployment verification
   - pushed_commit: f27b038
+- 2026-05-29T19:30:00Z: Clarify deployment evidence wording
+  - pushed_commit: 3cbb409
