@@ -9,6 +9,9 @@ declare global {
     __RPIXEL_SCENE__?: string;
     __RPIXEL_ACTIVE_PIGS__?: number;
     __RPIXEL_BLOCKS_LEFT__?: number;
+    __RPIXEL_SLOTS_FILLED__?: number;
+    __RPIXEL_STUCK_SLOTS__?: number;
+    __RPIXEL_RESERVE_LEFT__?: number;
   }
 }
 
@@ -29,4 +32,3 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 new Phaser.Game(config);
-
