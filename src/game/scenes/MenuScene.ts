@@ -18,6 +18,7 @@ export class MenuScene extends Phaser.Scene {
     this.drawLevelPath();
     this.drawPlayButton();
     this.drawBottomNav();
+    this.drawCornerUtilityButtons();
   }
 
   private drawBackground(): void {
@@ -48,9 +49,13 @@ export class MenuScene extends Phaser.Scene {
   private drawTopBar(): void {
     this.addRoundRect(112, 166, 140, 140, 28, 0x67c9ff, 1, 0x04112d, 5);
     this.add.image(112, 166, 'pig-green').setScale(0.72);
+    this.addRoundRect(112, 250, 132, 38, 15, 0x101830, 1, 0xffffff, 4, 0.9);
+    this.add.text(112, 233, 'LV 12', this.textStyle(25)).setOrigin(0.5, 0).setStroke('#06101f', 6);
 
     this.addRoundRect(372, 165, 335, 86, 20, 0x07122a, 0.48, 0x07122a, 4, 0.55);
     this.add.text(238, 137, 'INF 3m22s', this.textStyle(42)).setStroke('#06101f', 10);
+    this.addRoundRect(372, 224, 310, 30, 14, 0x071122, 0.65, 0xffffff, 3, 0.18);
+    this.addRoundRect(308, 224, 175, 20, 10, 0xff4d8d, 1);
 
     this.add.circle(620, 166, 52, 0xffc937).setStrokeStyle(6, 0x7a4a00);
     this.add.circle(620, 166, 38, 0xffdd55, 0.7);
@@ -65,15 +70,16 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private drawLevelPath(): void {
+    const currentLevel = this.getCurrentLevelId();
     const path = this.add.graphics();
     path.lineStyle(32, 0x052049, 0.34);
     path.lineBetween(GAME_WIDTH / 2, 280, GAME_WIDTH / 2, 1210);
     path.lineStyle(22, 0xffc624, 1);
     path.lineBetween(GAME_WIDTH / 2, 280, GAME_WIDTH / 2, 1210);
 
-    this.addLevelNode(540, 430, 1102, 0x1b90ff, false);
-    this.addLevelNode(540, 780, 1101, 0x1b90ff, false);
-    this.addLevelNode(540, 1185, FIRST_LEVEL.id, 0xe2383f, true);
+    this.addLevelNode(540, 430, currentLevel + 2, 0x1b90ff, false);
+    this.addLevelNode(540, 780, currentLevel + 1, 0x1b90ff, false);
+    this.addLevelNode(540, 1185, currentLevel, 0xe2383f, true);
 
     this.addRoundRect(540, 1325, 310, 76, 36, 0xc51f34, 1, 0x050915, 8);
     this.add.text(540, 1297, FIRST_LEVEL.difficulty, this.textStyle(42)).setOrigin(0.5, 0).setStroke('#06101f', 8);
@@ -150,6 +156,18 @@ export class MenuScene extends Phaser.Scene {
     );
     this.add.zone(900, 1818, 330, 190).setInteractive({ useHandCursor: true }).on('pointerdown', () =>
       this.showMockPanel('Coming Soon', ['Leaderboard and locked modes are not connected yet.']),
+    );
+  }
+
+  private drawCornerUtilityButtons(): void {
+    this.add.circle(92, 1658, 54, 0x22283d).setStrokeStyle(6, 0x050915);
+    this.add.text(52, 1635, 'SET', this.textStyle(25)).setStroke('#06101f', 7);
+    this.add.zone(92, 1658, 116, 116).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.showSettingsPanel());
+
+    this.add.circle(990, 1658, 54, 0x22283d).setStrokeStyle(6, 0x050915);
+    this.add.text(949, 1635, 'RANK', this.textStyle(23)).setStroke('#06101f', 7);
+    this.add.zone(990, 1658, 116, 116).setInteractive({ useHandCursor: true }).on('pointerdown', () =>
+      this.showMockPanel('Leaderboard', ['Ranking is a static mock panel.', 'Online leaderboard service is not connected.']),
     );
   }
 
@@ -279,5 +297,10 @@ export class MenuScene extends Phaser.Scene {
       color: '#ffffff',
       align: 'center',
     };
+  }
+
+  private getCurrentLevelId(): number {
+    const stored = Number(window.localStorage.getItem('rpixel-current-level'));
+    return Number.isFinite(stored) && stored >= FIRST_LEVEL.id ? stored : FIRST_LEVEL.id;
   }
 }
