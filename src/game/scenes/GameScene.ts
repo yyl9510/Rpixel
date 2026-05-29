@@ -44,6 +44,8 @@ interface BoardCell {
 interface TreasureState {
   unlocked: boolean;
   container: Phaser.GameObjects.Container;
+  row: number;
+  col: number;
 }
 
 interface EdgeTarget {
@@ -58,12 +60,14 @@ interface SlotShooter {
   status: SlotStatus;
   pig: Pig;
   container: Phaser.GameObjects.Container;
+  body: Phaser.GameObjects.Container;
   ammoText: Phaser.GameObjects.Text;
 }
 
 interface ResolvingShooter {
   pig: Pig;
   container: Phaser.GameObjects.Container;
+  body: Phaser.GameObjects.Container;
   ammoText: Phaser.GameObjects.Text;
   distance: number;
 }
@@ -114,8 +118,8 @@ export class GameScene extends Phaser.Scene {
     this.drawBackground();
     this.drawHud();
     this.drawTrack();
-    this.drawTreasure();
     this.drawBoard();
+    this.drawTreasure();
     this.drawSlotChrome();
 
     this.reserveLayer = this.add.container(0, 0).setDepth(12);
@@ -170,31 +174,65 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawTreasure(): void {
-    const container = this.add.container(this.center.x, this.center.y).setDepth(2);
-    container.add(this.makeRoundRect(168, 116, 24, 0x8b4a17, 0.88, 0x050915, 7));
-    container.add(this.makeRoundRect(184, 48, 22, 0xffc83d, 0.92, 0x8a4c00, 5, 1, 0, -44));
-    container.add(this.add.rectangle(0, 5, 184, 20, 0xffd84a, 0.94).setStrokeStyle(4, 0x8a4c00));
+    const row = Math.floor(this.rows / 2);
+    const col = Math.floor(this.cols / 2);
+    const x = this.boardX + col * this.cellSize + this.cellSize / 2;
+    const y = this.boardY + row * this.cellSize + this.cellSize / 2;
+    const container = this.add.container(x, y).setDepth(7).setScale(Math.min(0.82, (this.cellSize * 1.16) / 150));
+
+    container.add(this.add.ellipse(10, 50, 170, 38, 0x050915, 0.28));
+    container.add(this.makeRoundRect(158, 100, 22, 0x8b4a17, 0.92, 0x050915, 7, 1, 0, 14));
+    container.add(this.makeRoundRect(174, 56, 22, 0xffc83d, 0.96, 0x8a4c00, 5, 1, 0, -38));
+    container.add(this.add.rectangle(0, 8, 176, 20, 0xffd84a, 0.94).setStrokeStyle(4, 0x8a4c00));
     container.add(this.add.circle(0, 24, 18, 0xffd84a).setStrokeStyle(5, 0x8a4c00));
-    container.add(this.add.text(0, -6, '+40', this.textStyle(30)).setOrigin(0.5, 0).setStroke('#06101f', 6));
-    container.setAlpha(0.42);
-    this.treasure = { unlocked: false, container };
+    container.add(this.add.text(0, -3, '+40', this.textStyle(30)).setOrigin(0.5, 0).setStroke('#06101f', 6));
+    container.add(this.add.text(0, 52, 'LOCK', this.textStyle(21)).setOrigin(0.5, 0).setStroke('#06101f', 5));
+    container.setAlpha(0.48);
+    this.treasure = { unlocked: false, container, row, col };
   }
 
   private drawTrack(): void {
     const width = this.track.right - this.track.left;
     const height = this.track.bottom - this.track.top;
-    const g = this.add.graphics();
+    const g = this.add.graphics().setDepth(3);
     g.lineStyle(24, 0x051122, 0.5);
     g.strokeRoundedRect(this.track.left, this.track.top, width, height, 38);
     g.lineStyle(13, 0xffc51e, 1);
     g.strokeRoundedRect(this.track.left, this.track.top, width, height, 38);
     g.lineStyle(4, 0xfff19a, 0.9);
     g.strokeRoundedRect(this.track.left + 7, this.track.top + 7, width - 14, height - 14, 30);
+    this.drawTrackArrows();
+  }
+
+  private drawTrackArrows(): void {
+    const g = this.add.graphics().setDepth(4);
+    const drawArrow = (x: number, y: number, rotation: number): void => {
+      const points = [
+        new Phaser.Math.Vector2(24, 0).rotate(rotation).add(new Phaser.Math.Vector2(x, y)),
+        new Phaser.Math.Vector2(-18, -17).rotate(rotation).add(new Phaser.Math.Vector2(x, y)),
+        new Phaser.Math.Vector2(-18, 17).rotate(rotation).add(new Phaser.Math.Vector2(x, y)),
+      ].map((point) => new Phaser.Geom.Point(point.x, point.y));
+
+      g.fillStyle(0xfff1a6, 0.95);
+      g.fillPoints(points, true);
+      g.lineStyle(4, 0x8a4c00, 0.85);
+      g.strokePoints(points, true);
+    };
+
+    const horizontalInset = 146;
+    const verticalInset = 126;
+    for (let index = 0; index < 3; index += 1) {
+      const t = index / 2;
+      drawArrow(Phaser.Math.Linear(this.track.startX - 48, this.track.right - horizontalInset, t), this.track.bottom, 0);
+      drawArrow(this.track.right, Phaser.Math.Linear(this.track.bottom - verticalInset, this.track.top + verticalInset, t), -Math.PI / 2);
+      drawArrow(Phaser.Math.Linear(this.track.right - horizontalInset, this.track.left + horizontalInset, t), this.track.top, Math.PI);
+      drawArrow(this.track.left, Phaser.Math.Linear(this.track.top + verticalInset, this.track.bottom - verticalInset, t), Math.PI / 2);
+    }
   }
 
   private drawBoard(): void {
-    this.addRoundRect(this.center.x, this.center.y, BOARD_BOX_SIZE + 48, BOARD_BOX_SIZE + 48, 28, 0xf1fbff, 0.72, 0x050915, 8);
-    this.addRoundRect(this.center.x, this.center.y, BOARD_BOX_SIZE + 12, BOARD_BOX_SIZE + 12, 18, 0x1241a5, 0.18, 0xffffff, 4, 0.55);
+    this.addRoundRect(this.center.x, this.center.y, BOARD_BOX_SIZE + 48, BOARD_BOX_SIZE + 48, 28, 0xf1fbff, 0.72, 0x050915, 8).setDepth(5);
+    this.addRoundRect(this.center.x, this.center.y, BOARD_BOX_SIZE + 12, BOARD_BOX_SIZE + 12, 18, 0x1241a5, 0.18, 0xffffff, 4, 0.55).setDepth(5);
 
     this.cells = FIRST_LEVEL.grid.map((row, rowIndex) =>
       Array.from({ length: this.cols }, (_, colIndex) => {
@@ -208,7 +246,8 @@ export class GameScene extends Phaser.Scene {
           this.boardY + rowIndex * this.cellSize + this.cellSize / 2,
           `block-${color}`,
         );
-        image.setScale((this.cellSize * 0.9) / 112);
+        image.setScale((this.cellSize * 1.03) / 128);
+        image.setDepth(9 + rowIndex + colIndex * 0.01);
 
         return {
           row: rowIndex,
@@ -270,7 +309,7 @@ export class GameScene extends Phaser.Scene {
           this.evaluateSlots();
           return;
         }
-        this.showResult(false, 'NO MOVES');
+        this.showResult(false, 'SLOTS FULL');
       }
       return;
     }
@@ -278,7 +317,7 @@ export class GameScene extends Phaser.Scene {
     const reservePosition = this.reservePosition(reserveIndex);
     const [pig] = this.reserve.splice(reserveIndex, 1);
     const slottedPig = { ...pig, mystery: false };
-    const token = this.createPigToken(slottedPig, reservePosition.x, reservePosition.y, 0.58, false, undefined, false, false);
+    const token = this.createPigToken(slottedPig, reservePosition.x, reservePosition.y, 0.58, false, undefined, true, false);
     token.container.setDepth(24);
 
     const slot: SlotShooter = {
@@ -286,6 +325,7 @@ export class GameScene extends Phaser.Scene {
       status: 'entering',
       pig: slottedPig,
       container: token.container,
+      body: token.body,
       ammoText: token.ammoText,
     };
     this.slots[slotIndex] = slot;
@@ -356,6 +396,7 @@ export class GameScene extends Phaser.Scene {
     const active: ResolvingShooter = {
       pig: slot.pig,
       container: slot.container,
+      body: slot.body,
       ammoText: slot.ammoText,
       distance: 0,
     };
@@ -369,7 +410,7 @@ export class GameScene extends Phaser.Scene {
       scale: 0.7,
       duration: 230,
       ease: 'Quad.easeOut',
-      onUpdate: () => this.faceCenter(active.container),
+      onUpdate: () => this.faceCenter(active),
       onComplete: () => {
         active.distance = 0;
         this.moveResolvingToTarget(active, target);
@@ -393,13 +434,13 @@ export class GameScene extends Phaser.Scene {
         const distance = (active.distance + state.value) % this.track.total;
         const position = this.positionOnTrack(distance);
         active.container.setPosition(position.x, position.y);
-        this.faceCenter(active.container);
+        this.faceCenter(active);
       },
       onComplete: () => {
         active.distance = target.distance;
         const position = this.positionOnTrack(active.distance);
         active.container.setPosition(position.x, position.y);
-        this.faceCenter(active.container);
+        this.faceCenter(active);
         this.shootCurrentLine(active, target);
       },
     });
@@ -452,11 +493,16 @@ export class GameScene extends Phaser.Scene {
 
     const style = COLOR_STYLES[active.pig.color];
     const beam = this.add.graphics().setDepth(22);
-    beam.lineStyle(14, style.light, 0.65);
+    beam.lineStyle(26, 0xffffff, 0.2);
+    beam.lineBetween(active.container.x, active.container.y, target.image.x, target.image.y);
+    beam.lineStyle(15, style.light, 0.78);
+    beam.lineBetween(active.container.x, active.container.y, target.image.x, target.image.y);
+    beam.lineStyle(7, 0xffffff, 0.9);
     beam.lineBetween(active.container.x, active.container.y, target.image.x, target.image.y);
 
     const projectile = this.add.circle(active.container.x, active.container.y, 18, style.base).setStrokeStyle(5, 0xffffff, 0.95).setDepth(23);
-    this.tweens.add({ targets: beam, alpha: 0, duration: 180, onComplete: () => beam.destroy() });
+    this.tweens.add({ targets: target.image, scale: target.image.scaleX * 1.14, duration: 75, yoyo: true, ease: 'Quad.easeOut' });
+    this.tweens.add({ targets: beam, alpha: 0, duration: 220, onComplete: () => beam.destroy() });
     this.tweens.add({
       targets: projectile,
       x: target.image.x,
@@ -483,7 +529,8 @@ export class GameScene extends Phaser.Scene {
     this.updateDebugState();
 
     const style = COLOR_STYLES[cell.color];
-    for (let index = 0; index < 12; index += 1) {
+    this.cameras.main.shake(70, 0.0012);
+    for (let index = 0; index < 18; index += 1) {
       const particle = this.add.circle(cell.image.x, cell.image.y, Phaser.Math.Between(5, 11), style.light, 0.86).setDepth(25);
       this.tweens.add({
         targets: particle,
@@ -494,6 +541,25 @@ export class GameScene extends Phaser.Scene {
         duration: Phaser.Math.Between(210, 360),
         ease: 'Quad.easeOut',
         onComplete: () => particle.destroy(),
+      });
+    }
+
+    for (let index = 0; index < 10; index += 1) {
+      const shard = this.add
+        .rectangle(cell.image.x, cell.image.y, Phaser.Math.Between(12, 24), Phaser.Math.Between(8, 18), index % 2 === 0 ? style.base : style.dark, 0.94)
+        .setStrokeStyle(2, 0xffffff, 0.3)
+        .setDepth(26)
+        .setAngle(Phaser.Math.Between(-45, 45));
+      this.tweens.add({
+        targets: shard,
+        x: cell.image.x + Phaser.Math.Between(-86, 86),
+        y: cell.image.y + Phaser.Math.Between(-92, 92),
+        angle: shard.angle + Phaser.Math.Between(-220, 220),
+        alpha: 0,
+        scale: 0.35,
+        duration: Phaser.Math.Between(240, 430),
+        ease: 'Cubic.easeOut',
+        onComplete: () => shard.destroy(),
       });
     }
 
@@ -518,11 +584,12 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const centerRows = [Math.floor(this.rows / 2) - 1, Math.floor(this.rows / 2)];
-    const centerCols = [Math.floor(this.cols / 2) - 1, Math.floor(this.cols / 2)];
-    const uncovered = centerRows.every((row) =>
-      centerCols.every((col) => {
-        const cell = this.cells[row]?.[col] ?? null;
+    const uncovered = [-1, 0, 1].every((rowOffset) =>
+      [-1, 0, 1].every((colOffset) => {
+        if (rowOffset === 0 && colOffset === 0) {
+          return true;
+        }
+        const cell = this.cells[this.treasure!.row + rowOffset]?.[this.treasure!.col + colOffset] ?? null;
         return cell === null || cell.cleared;
       }),
     );
@@ -532,7 +599,21 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.treasure.unlocked = true;
-    this.tweens.add({ targets: this.treasure.container, alpha: 1, scale: 1.18, duration: 220, yoyo: true, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: this.treasure.container, alpha: 1, scale: this.treasure.container.scaleX * 1.26, duration: 220, yoyo: true, ease: 'Back.easeOut' });
+    for (let index = 0; index < 14; index += 1) {
+      const sparkle = this.add.star(this.treasure.container.x, this.treasure.container.y, 5, 8, 20, 0xfff1a6, 0.95).setDepth(32);
+      this.tweens.add({
+        targets: sparkle,
+        x: sparkle.x + Phaser.Math.Between(-120, 120),
+        y: sparkle.y + Phaser.Math.Between(-120, 120),
+        angle: Phaser.Math.Between(-180, 180),
+        alpha: 0,
+        scale: 0.2,
+        duration: Phaser.Math.Between(360, 620),
+        ease: 'Quad.easeOut',
+        onComplete: () => sparkle.destroy(),
+      });
+    }
     this.time.delayedCall(260, () => this.animateCoinsFrom(this.treasure?.container.x ?? this.center.x, this.treasure?.container.y ?? this.center.y, 40));
     this.updateDebugState();
   }
@@ -662,10 +743,16 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    panel.add(this.add.text(0, -156, title, this.textStyle(66)).setOrigin(0.5, 0).setStroke('#06101f', 12));
-    panel.add(this.add.text(0, -34, `${this.clearedCells}/${this.totalCells}`, this.textStyle(54)).setOrigin(0.5, 0).setStroke('#06101f', 10));
-    panel.add(this.makeResultButton(-170, 124, 'Retry', 0xffc83d, () => this.scene.restart()));
-    panel.add(this.makeResultButton(170, 124, 'Map', 0x35c95f, () => this.scene.start('MenuScene')));
+    panel.add(this.add.text(0, -164, title, this.textStyle(62)).setOrigin(0.5, 0).setStroke('#06101f', 12));
+    panel.add(this.add.text(0, -74, 'All 5 slots are blocked', this.textStyle(34)).setOrigin(0.5, 0).setStroke('#06101f', 8));
+    panel.add(this.add.text(0, -24, 'No exposed matching color can move.', this.textStyle(27)).setOrigin(0.5, 0).setStroke('#06101f', 7));
+    for (let index = 0; index < SLOT_CAPACITY; index += 1) {
+      panel.add(this.makeRoundRect(74, 54, 15, 0x101830, 1, 0xffffff, 4, 0.35, -176 + index * 88, 58));
+      panel.add(this.add.circle(-176 + index * 88, 58, 18, 0xbd2338).setStrokeStyle(4, 0x050915));
+    }
+    panel.add(this.add.text(0, 108, `${this.clearedCells}/${this.totalCells} cleared`, this.textStyle(32)).setOrigin(0.5, 0).setStroke('#06101f', 8));
+    panel.add(this.makeResultButton(-170, 202, 'Retry', 0xffc83d, () => this.scene.restart()));
+    panel.add(this.makeResultButton(170, 202, 'Map', 0x35c95f, () => this.scene.start('MenuScene')));
   }
 
   private makeResultButton(x: number, y: number, label: string, color: number, onClick: () => void): Phaser.GameObjects.Container {
@@ -706,16 +793,20 @@ export class GameScene extends Phaser.Scene {
     onClick?: () => void,
     showBarrel = false,
     mystery = false,
-  ): { container: Phaser.GameObjects.Container; ammoText: Phaser.GameObjects.Text } {
+  ): { container: Phaser.GameObjects.Container; body: Phaser.GameObjects.Container; ammoText: Phaser.GameObjects.Text } {
     const container = this.add.container(x, y).setScale(scale);
     const shadow = this.add.ellipse(8, 18, 132, 58, 0x050915, 0.25);
-    const barrel = this.add.rectangle(0, -78, 30, 64, 0x242a3d).setStrokeStyle(5, 0x050915);
+    const body = this.add.container(0, 0);
+    const barrel = this.add.rectangle(0, -84, 30, 68, 0x242a3d).setStrokeStyle(5, 0x050915);
+    const barrelTip = this.add.circle(0, -120, 18, 0x5c6684).setStrokeStyle(5, 0x050915);
     barrel.setVisible(showBarrel);
+    barrelTip.setVisible(showBarrel);
 
     const image = mystery ? this.makeMysteryToken() : this.add.image(0, 0, `pig-${pig.color}`);
+    body.add([barrel, barrelTip, image]);
     const badge = this.add.circle(50, -44, 28, 0xffffff).setStrokeStyle(6, 0x050915);
     const ammoText = this.add.text(50, -66, mystery ? '?' : String(pig.ammo), this.textStyle(34)).setOrigin(0.5, 0).setStroke('#06101f', 7);
-    container.add([shadow, barrel, image, badge, ammoText]);
+    container.add([shadow, body, badge, ammoText]);
 
     if (interactive) {
       const zone = this.add.zone(0, 0, 158, 158).setInteractive({ useHandCursor: true });
@@ -726,12 +817,14 @@ export class GameScene extends Phaser.Scene {
       container.add(zone);
     }
 
-    return { container, ammoText };
+    return { container, body, ammoText };
   }
 
   private makeMysteryToken(): Phaser.GameObjects.Container {
     const container = this.add.container(0, 0);
+    container.add(this.add.ellipse(6, 36, 118, 34, 0x050915, 0.28));
     container.add(this.makeRoundRect(126, 112, 30, 0x4d5dd9, 1, 0x050915, 7));
+    container.add(this.makeRoundRect(88, 28, 14, 0xaab5ff, 0.35, undefined, 0, 1, -12, -31));
     container.add(this.add.text(0, -50, '?', this.textStyle(78)).setOrigin(0.5, 0).setStroke('#06101f', 11));
     return container;
   }
@@ -814,8 +907,8 @@ export class GameScene extends Phaser.Scene {
     return { x: 142 + col * 133, y: 1530 + row * 150 };
   }
 
-  private faceCenter(container: Phaser.GameObjects.Container): void {
-    container.setRotation(Phaser.Math.Angle.Between(container.x, container.y, this.center.x, this.center.y) + Math.PI / 2);
+  private faceCenter(active: ResolvingShooter): void {
+    active.body.setRotation(Phaser.Math.Angle.Between(active.container.x, active.container.y, this.center.x, this.center.y) + Math.PI / 2);
   }
 
   private updateProgressText(): void {

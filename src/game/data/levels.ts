@@ -1,12 +1,13 @@
 import type { LevelDefinition, Pig, PixelCellColor } from '../types';
 
 const grid: PixelCellColor[][] = [
-  ['red', 'red', 'blue', 'blue', 'green', 'green'],
-  ['red', 'purple', 'purple', 'yellow', 'yellow', 'green'],
-  ['blue', 'purple', 'yellow', 'purple', 'red', 'yellow'],
-  ['blue', 'green', 'purple', 'yellow', 'purple', 'yellow'],
-  ['green', 'red', 'red', 'blue', 'purple', 'blue'],
-  ['green', 'green', 'yellow', 'yellow', 'blue', 'blue'],
+  [null, null, 'red', 'red', 'blue', null, null],
+  [null, 'red', 'yellow', 'yellow', 'green', 'green', null],
+  ['blue', 'yellow', 'purple', 'yellow', 'purple', 'red', 'green'],
+  ['blue', 'green', 'purple', null, 'purple', 'yellow', 'green'],
+  ['green', 'red', 'purple', null, 'purple', 'yellow', 'blue'],
+  ['green', 'red', 'red', null, 'blue', 'yellow', 'blue'],
+  [null, 'green', 'yellow', null, 'yellow', 'blue', null],
 ];
 
 const pigs: Pig[] = [

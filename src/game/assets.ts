@@ -29,53 +29,89 @@ export function createGeneratedAssets(scene: Phaser.Scene): void {
 
 function createBlockTexture(scene: Phaser.Scene, color: PigColor, style: ColorStyle): void {
   const g = scene.add.graphics();
-  g.fillStyle(0x050915, 0.34);
-  g.fillRoundedRect(10, 14, 92, 92, 18);
-  g.lineStyle(7, 0x050915, 1);
+  const topX = 16;
+  const topY = 8;
+  const size = 82;
+  const depth = 24;
+
+  g.fillStyle(0x050915, 0.3);
+  g.fillEllipse(66, 104, 104, 32);
   g.fillStyle(style.dark, 1);
-  g.fillRoundedRect(6, 6, 92, 92, 18);
-  g.strokeRoundedRect(6, 6, 92, 92, 18);
+  g.fillPoints(
+    [
+      new Phaser.Geom.Point(topX, topY + size - 4),
+      new Phaser.Geom.Point(topX + depth, topY + size + depth),
+      new Phaser.Geom.Point(topX + size + depth, topY + size + depth),
+      new Phaser.Geom.Point(topX + size, topY + size - 4),
+    ],
+    true,
+  );
+  g.fillStyle(style.dark, 0.86);
+  g.fillPoints(
+    [
+      new Phaser.Geom.Point(topX + size - 4, topY + 10),
+      new Phaser.Geom.Point(topX + size + depth, topY + depth + 10),
+      new Phaser.Geom.Point(topX + size + depth, topY + size + depth),
+      new Phaser.Geom.Point(topX + size - 4, topY + size - 4),
+    ],
+    true,
+  );
+  g.lineStyle(7, 0x050915, 1);
   g.fillStyle(style.base, 1);
-  g.fillRoundedRect(14, 12, 76, 76, 14);
-  g.fillStyle(style.light, 0.55);
-  g.fillRoundedRect(22, 18, 46, 18, 9);
-  g.generateTexture(`block-${color}`, 112, 112);
+  g.fillRoundedRect(topX, topY, size, size, 16);
+  g.strokeRoundedRect(topX, topY, size, size, 16);
+  g.fillStyle(style.light, 0.58);
+  g.fillRoundedRect(topX + 12, topY + 10, 50, 18, 9);
+  g.fillStyle(0xffffff, 0.2);
+  g.fillRoundedRect(topX + 12, topY + 34, 64, 10, 5);
+  g.lineStyle(3, 0xffffff, 0.28);
+  g.strokeRoundedRect(topX + 9, topY + 8, size - 18, size - 18, 12);
+  g.generateTexture(`block-${color}`, 128, 128);
   g.destroy();
 }
 
 function createPigTexture(scene: Phaser.Scene, color: PigColor, style: ColorStyle): void {
   const g = scene.add.graphics();
-  g.fillStyle(0x050915, 0.38);
-  g.fillEllipse(78, 92, 122, 74);
-  g.fillStyle(style.dark, 1);
-  g.fillCircle(43, 39, 24);
-  g.fillCircle(113, 39, 24);
+  g.fillStyle(0x050915, 0.34);
+  g.fillEllipse(82, 116, 126, 42);
+
   g.lineStyle(7, 0x050915, 1);
-  g.strokeCircle(43, 39, 24);
-  g.strokeCircle(113, 39, 24);
+  g.fillStyle(style.dark, 1);
+  g.fillCircle(28, 78, 20);
+  g.strokeCircle(28, 78, 20);
+  g.fillCircle(136, 78, 20);
+  g.strokeCircle(136, 78, 20);
+
+  g.fillStyle(style.dark, 1);
+  g.fillRoundedRect(22, 32, 120, 106, 30);
+  g.strokeRoundedRect(22, 32, 120, 106, 30);
   g.fillStyle(style.base, 1);
-  g.fillRoundedRect(20, 28, 116, 106, 30);
-  g.strokeRoundedRect(20, 28, 116, 106, 30);
-  g.fillStyle(style.light, 0.34);
-  g.fillRoundedRect(32, 36, 76, 23, 12);
+  g.fillRoundedRect(30, 24, 104, 104, 30);
+  g.strokeRoundedRect(30, 24, 104, 104, 30);
+  g.fillStyle(style.light, 0.45);
+  g.fillRoundedRect(42, 34, 66, 22, 11);
+  g.fillStyle(0xffffff, 0.22);
+  g.fillRoundedRect(44, 62, 78, 12, 6);
+
   g.fillStyle(0xffffff, 1);
-  g.fillCircle(55, 75, 13);
-  g.fillCircle(101, 75, 13);
+  g.fillCircle(62, 76, 12);
+  g.fillCircle(101, 76, 12);
   g.fillStyle(0x071122, 1);
-  g.fillCircle(58, 77, 7);
-  g.fillCircle(98, 77, 7);
+  g.fillCircle(64, 78, 6);
+  g.fillCircle(99, 78, 6);
+  g.lineStyle(5, 0x071122, 1);
+  g.lineBetween(71, 103, 91, 103);
+
   g.fillStyle(0xffd86b, 1);
-  g.fillRoundedRect(48, 93, 60, 31, 15);
+  g.fillRoundedRect(56, 12, 52, 24, 12);
   g.lineStyle(5, 0x8a4c00, 1);
-  g.strokeRoundedRect(48, 93, 60, 31, 15);
-  g.fillStyle(0x8a4c00, 1);
-  g.fillCircle(67, 108, 5);
-  g.fillCircle(89, 108, 5);
-  g.lineStyle(8, 0x050915, 1);
-  g.lineBetween(78, 18, 78, 0);
-  g.lineStyle(5, 0xffffff, 0.75);
-  g.lineBetween(63, 0, 93, 0);
-  g.generateTexture(`pig-${color}`, 156, 150);
+  g.strokeRoundedRect(56, 12, 52, 24, 12);
+  g.fillStyle(0xfff1a6, 0.72);
+  g.fillRoundedRect(64, 16, 26, 7, 4);
+
+  g.fillStyle(style.dark, 1);
+  g.fillRoundedRect(44, 124, 22, 18, 9);
+  g.fillRoundedRect(98, 124, 22, 18, 9);
+  g.generateTexture(`pig-${color}`, 164, 154);
   g.destroy();
 }
-
