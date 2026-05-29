@@ -52,7 +52,7 @@ Continue implementation until the H5 game practically conforms to the provided P
 - [x] Irregular arch-style board layout using null cells rather than a fixed rectangular fill.
 - [x] Pseudo-3D glossy block and shooter textures with directional shooter body rotation.
 - [x] Visible arrowed track and stronger beam, shard, particle, shake, and treasure unlock feedback.
-- [ ] Automated local and public deployment checks.
+- [x] Automated local and public deployment checks.
 
 ### Claimed Output
 - H5 Pixel Flow prototype updated for practical PRD conformance using the existing Phaser/Vite/GitHub Pages stack.
@@ -64,7 +64,10 @@ Continue implementation until the H5 game practically conforms to the provided P
 - Local validation: npm run check passed; npm run test:smoke passed with 3/3 tests.
 - Playwright visual artifacts generated under ignored test-results/: visual-menu.png, visual-settings.png, visual-gameplay.png, visual-stuck-slot.png, visual-win.png.
 - Latest visual state check: canvas 1080x1920, nonblank luma/alpha samples, stuck-slot state blocks=37 slots=1 stuck=1 locked=7, win state blocks=0 treasure=true.
-- Public GitHub Pages deployment verification is performed after merging/pushing main and reported in the final completion report.
+- Current main deployment: merge commit 007f1a3 pushed to origin/main.
+- GitHub Actions verification: Deploy GitHub Pages run 26657336598 for 007f1a3 completed successfully.
+- Public Pages verification: https://yyl9510.github.io/Rpixel/ loads assets/index-b8oKv3_r.js.
+- Public Playwright smoke: menu canvas nonblank, settings popup renders, reserve-to-stuck state verified (blocks=37, slots=1, stuck=1, reserve=17, locked=7), full clear reaches win, Continue returns to menu with rpixel-current-level=1101.
 
 ## Steps
 - 2026-05-29T18:37:56Z: task created
@@ -78,3 +81,4 @@ Continue implementation until the H5 game practically conforms to the provided P
   - pushed_commit: aab70f4
 - 2026-05-29T19:17:33Z: Record Pixel Flow conformance evidence
   - pushed_commit: 9d27b3b
+- 2026-05-29T19:26:34Z: Record final deployment verification
