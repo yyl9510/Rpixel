@@ -51,3 +51,4 @@ Revise the existing H5 MVP according to the provided Pixel Flow PRD: reserve poo
   - pushed_commit: a0c7f53
 - 2026-05-29T18:27:55Z: Rework gameplay to Pixel Flow slot rules
   - pushed_commit: dce6bbd
+- 2026-05-29T18:29:57Z: Add static mock menu panels
