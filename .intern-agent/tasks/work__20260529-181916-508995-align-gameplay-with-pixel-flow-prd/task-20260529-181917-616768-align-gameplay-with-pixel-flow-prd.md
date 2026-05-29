@@ -40,10 +40,19 @@ Revise the existing H5 MVP according to the provided Pixel Flow PRD: reserve poo
 - No unrelated refactors outside the game MVP/deployment surface.
 
 ### Claimed Output
-- TODO: fill when reporting completion.
+- Replaced the old click-slot/orbit-once gameplay with PRD-style reserve-to-active-slot flow.
+- Bottom reserve pool is now the only gameplay input source; clicked shooters fly into the leftmost empty active slot.
+- Shooters with no exposed same-color edge block remain stuck in active slots.
+- Matching shooters automatically leave slots, travel on the surrounding track, shoot inward, clear visible same-color blocks, consume ammo, and continue to the next exposed line while ammo remains.
+- The first test level now uses ammo/capacity values and a grid designed to demonstrate stuck slots, exposure, and automatic activation.
+- Failure now occurs when the player clicks a reserve shooter while all five active slots are occupied.
+- Added static mock panels for menu-side systems and a Settings panel with toggle UI.
 
 ### Artifacts And Evidence
-- TODO: fill with changed files, commits, generated artifacts, logs, screenshots, or test output.
+- Changed files: src/game/scenes/GameScene.ts, src/game/data/levels.ts, src/game/types.ts, src/main.ts, tests/smoke.spec.ts, src/game/scenes/MenuScene.ts.
+- Validation passed: npm run check.
+- Validation passed: npm run test:smoke.
+- Visual smoke screenshots generated locally under test-results/: prd-game-initial.png, prd-game-stuck-slot.png, prd-game-after-clear.png, prd-settings-panel.png.
 
 ## Steps
 - 2026-05-29T18:19:17Z: task created
@@ -53,3 +62,4 @@ Revise the existing H5 MVP according to the provided Pixel Flow PRD: reserve poo
   - pushed_commit: dce6bbd
 - 2026-05-29T18:29:57Z: Add static mock menu panels
   - pushed_commit: 8758693
+- 2026-05-29T18:30:27Z: Record PRD gameplay validation
