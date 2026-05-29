@@ -61,3 +61,4 @@ Continue implementation until the H5 game practically conforms to the provided P
 - 2026-05-29T18:38:45Z: Document PRD conformance checklist
   - pushed_commit: 1ca3388
 - 2026-05-29T18:42:54Z: Tighten PRD gameplay rules
+  - pushed_commit: fe5a9f0
