@@ -14,9 +14,9 @@ npm run dev
 ```bash
 npm run typecheck
 npm run build
+npm run test:smoke
 ```
 
 ## Deployment
 
 The repository includes a GitHub Actions workflow that builds and deploys `dist/` to GitHub Pages when `main` is updated.
-

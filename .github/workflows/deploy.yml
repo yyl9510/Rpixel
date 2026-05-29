@@ -33,6 +33,12 @@ jobs:
       - name: Check
         run: npm run check
 
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test
+        run: npm run test:smoke
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
@@ -51,4 +57,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
