@@ -149,7 +149,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(935, 54, 'Retry', this.textStyle(32)).setStroke('#06101f', 7);
     this.add.zone(978, 84, 148, 92).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.scene.restart());
 
-    this.blocksLeftText = this.add.text(540, 345, '', this.textStyle(38)).setOrigin(0.5, 0).setStroke('#06101f', 8);
+    this.blocksLeftText = this.add.text(540, 392, '', this.textStyle(38)).setOrigin(0.5, 0).setStroke('#06101f', 8).setDepth(18);
     this.updateProgressText();
   }
 
