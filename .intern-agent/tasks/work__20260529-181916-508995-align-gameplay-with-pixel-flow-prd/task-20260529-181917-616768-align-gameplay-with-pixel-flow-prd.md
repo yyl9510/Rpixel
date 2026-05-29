@@ -14,16 +14,30 @@ Revise the existing H5 MVP according to the provided Pixel Flow PRD: reserve poo
 Revise the existing H5 MVP according to the provided Pixel Flow PRD: reserve pool is the only player input source, shooters enter the leftmost active slot, slots hold up to five stuck shooters, matching shooters auto-activate only when same-color edge blocks are exposed, shooters move on the surrounding track to matching row/column lines, shoot inward, combo across exposed lines while ammo remains, fail only when full stuck slots receive another reserve click, keep mock UI/static systems, verify and redeploy via GitHub Pages.
 
 ### Assigned Scope
-- TODO: summarize the agreed scope before delegating or implementing.
+- Replace the existing gameplay state flow with the Pixel Flow PRD behavior.
+- Make the bottom reserve pool the only player input source.
+- Add five active slots below the board; clicked shooters fly into the leftmost empty slot.
+- Auto-activate slotted shooters only when same-color edge blocks are exposed, then move them on the track to the matching row/column and shoot inward.
+- Keep stuck shooters occupying slots until later eliminations expose their color.
+- Fail only when all five slots are full/stuck and the player clicks another reserve shooter.
+- Preserve the existing H5/Vite/Phaser deployment setup and static mock UI approach.
 
 ### Deliverables
-- TODO: list expected files, artifacts, decisions, or reports.
+- Updated level data with ammo values suitable for PRD-style shooter capacity.
+- Reworked gameplay scene matching the PRD state flow.
+- Updated smoke tests for reserve-click input, active-slot behavior, and public deploy viability.
+- Validation evidence and redeployment to GitHub Pages.
 
 ### Validation Plan
-- TODO: list tests, commands, source checks, or review criteria.
+- Run npm run check.
+- Run npm run test:smoke.
+- Run a local/mobile screenshot smoke check when feasible.
+- Push to main and verify the GitHub Pages URL loads and can enter gameplay.
 
 ### Constraints And Non-Goals
-- TODO: list constraints such as no restart, no unrelated refactors, file ownership, or deployment limits.
+- Do not implement real backend, purchases, ads, rankings, account deletion, or persistence systems.
+- Keep side systems as mock/static UI only unless needed for gameplay verification.
+- No unrelated refactors outside the game MVP/deployment surface.
 
 ### Claimed Output
 - TODO: fill when reporting completion.
@@ -33,3 +47,4 @@ Revise the existing H5 MVP according to the provided Pixel Flow PRD: reserve poo
 
 ## Steps
 - 2026-05-29T18:19:17Z: task created
+- 2026-05-29T18:19:48Z: Document Pixel Flow PRD alignment task
