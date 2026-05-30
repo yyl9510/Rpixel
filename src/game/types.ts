@@ -1,4 +1,4 @@
-export const PIG_COLORS = ['red', 'blue', 'yellow', 'green', 'purple'] as const;
+export const PIG_COLORS = ['red', 'blue', 'yellow', 'green', 'purple', 'orange', 'white'] as const;
 
 export type PigColor = (typeof PIG_COLORS)[number];
 
