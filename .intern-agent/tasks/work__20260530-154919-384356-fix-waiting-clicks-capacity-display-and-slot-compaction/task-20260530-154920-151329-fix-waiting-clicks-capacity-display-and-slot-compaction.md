@@ -50,3 +50,4 @@ User reports many reserve/waiting shooters cannot be clicked, all waiting shoote
 ## Steps
 - 2026-05-30T15:49:20Z: task created
 - 2026-05-30T15:55:14Z: Fix waiting clicks capacity display and slot compaction
+  - pushed_commit: 54a5d62
