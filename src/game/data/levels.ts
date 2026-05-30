@@ -61,7 +61,28 @@ function makeReferenceGrid(): PixelCellColor[][] {
   );
 }
 
-const grid = makeReferenceGrid();
+function balanceGridToFiveMultiples(board: PixelCellColor[][]): PixelCellColor[][] {
+  const balanced = board.map((row) => [...row]);
+  const changes: Array<{ row: number; col: number; from: PixelCellColor; to: PixelCellColor }> = [
+    { row: 7, col: 6, from: 'orange', to: 'red' },
+    { row: 7, col: 7, from: 'orange', to: 'red' },
+    { row: 7, col: 8, from: 'orange', to: 'yellow' },
+    { row: 0, col: 5, from: null, to: 'blue' },
+    { row: 0, col: 11, from: null, to: 'purple' },
+    { row: 1, col: 3, from: null, to: 'green' },
+  ];
+
+  changes.forEach(({ row, col, from, to }) => {
+    if ((balanced[row]?.[col] ?? null) !== from) {
+      throw new Error(`Unexpected level balance source at ${row}:${col}`);
+    }
+    balanced[row][col] = to;
+  });
+
+  return balanced;
+}
+
+const grid = balanceGridToFiveMultiples(makeReferenceGrid());
 
 function emptyColorTotals(): Record<PigColor, number> {
   return PIG_COLORS.reduce(
@@ -81,10 +102,18 @@ function countGridColors(board: PixelCellColor[][]): Record<PigColor, number> {
 }
 
 function splitAmmo(total: number, parts: number): number[] {
-  const safeParts = Math.max(1, Math.min(parts, total));
-  const base = Math.floor(total / safeParts);
-  const remainder = total % safeParts;
-  return Array.from({ length: safeParts }, (_, index) => base + (index < remainder ? 1 : 0));
+  if (total <= 0) {
+    return [];
+  }
+  if (total % 5 !== 0) {
+    throw new Error(`Shooter ammo total must be divisible by 5, received ${total}`);
+  }
+
+  const units = total / 5;
+  const safeParts = Math.max(1, Math.min(parts, units));
+  const base = Math.floor(units / safeParts);
+  const remainder = units % safeParts;
+  return Array.from({ length: safeParts }, (_, index) => (base + (index < remainder ? 1 : 0)) * 5);
 }
 
 function buildBalancedPigs(board: PixelCellColor[][]): Pig[] {
@@ -102,24 +131,22 @@ function buildBalancedPigs(board: PixelCellColor[][]): Pig[] {
   const [greenFirst = 0, greenSecond = 0] = splitAmmo(totals.green, 2);
   const [blueFirst = 0, blueSecond = 0] = splitAmmo(totals.blue, 2);
   const [whiteFirst = 0, whiteSecond = 0] = splitAmmo(totals.white, 2);
-  const [redFirst = 0, redSecond = 0] = splitAmmo(totals.red, 2);
-  const [purpleA = 0, purpleB = 0, purpleC = 0, purpleD = 0, purpleE = 0] = splitAmmo(totals.purple, 5);
+  const [redA = 0, redB = 0, redC = 0, redD = 0] = splitAmmo(totals.red, 4);
+  const [purpleA = 0] = splitAmmo(totals.purple, 1);
 
   const queue: Array<[PigColor, number]> = [
-    ['purple', purpleA],
-    ['purple', purpleB],
-    ['purple', purpleC],
-    ['purple', purpleD],
-    ['purple', purpleE],
-    ['white', whiteFirst],
-    ['green', greenFirst],
-    ['red', redFirst],
-    ['red', redSecond],
     ['blue', blueFirst],
-    ['white', whiteSecond],
+    ['red', redA],
+    ['green', greenFirst],
+    ['white', whiteFirst],
+    ['red', redB],
+    ['purple', purpleA],
     ['orange', totals.orange],
     ['yellow', totals.yellow],
+    ['white', whiteSecond],
+    ['red', redC],
     ['blue', blueSecond],
+    ['red', redD],
     ['green', greenSecond],
   ];
 

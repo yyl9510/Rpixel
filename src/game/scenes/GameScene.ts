@@ -112,6 +112,7 @@ export class GameScene extends Phaser.Scene {
   private manualHitLayer?: Phaser.GameObjects.Container;
   private blocksLeftText?: Phaser.GameObjects.Text;
   private activeCapacityText?: Phaser.GameObjects.Text;
+  private speedToggleText?: Phaser.GameObjects.Text;
   private coinText?: Phaser.GameObjects.Text;
   private progressFill?: Phaser.GameObjects.Graphics;
   private treasure?: TreasureState;
@@ -119,6 +120,7 @@ export class GameScene extends Phaser.Scene {
   private totalCells = 0;
   private clearedCells = 0;
   private lastDirectPigPointerStamp = -1;
+  private speedMultiplier: 1 | 5 = 1;
   private shotLog: Array<{ pigId: string; color: PigColor; side: Side; lineIndex: number; cell: string; distance: number }> = [];
   private gameOver = false;
 
@@ -145,6 +147,7 @@ export class GameScene extends Phaser.Scene {
     this.treasure = undefined;
     this.coins = 10100;
     this.clearedCells = 0;
+    this.speedMultiplier = 1;
     this.slots = Array.from({ length: SLOT_CAPACITY }, () => null);
     this.reserveColumns = this.buildReserveColumns(FIRST_LEVEL.pigs);
     this.shotLog = [];
@@ -212,10 +215,27 @@ export class GameScene extends Phaser.Scene {
     this.coinText = this.add.text(798, 50, this.formatCoins(this.coins), this.textStyle(43)).setStroke('#06101f', 9);
     this.addRoundRect(968, 82, 84, 78, 18, 0xffb43d, 1, 0x6b3b00, 6);
     this.add.text(943, 40, '+', this.textStyle(65)).setStroke('#9a5200', 8);
+    this.drawSpeedToggle();
 
     this.progressFill = this.add.graphics().setDepth(4);
     this.blocksLeftText = this.add.text(540, 134, '', this.textStyle(18)).setOrigin(0.5, 0).setAlpha(0);
     this.updateProgressText();
+  }
+
+  private drawSpeedToggle(): void {
+    const container = this.add.container(934, 190).setDepth(52);
+    const background = this.makeRoundRect(142, 70, 22, 0x101830, 0.88, 0xdce7ff, 5, 0.65);
+    const gloss = this.makeRoundRect(106, 22, 10, 0xffffff, 0.2, undefined, 0, 1, -6, -15);
+    this.speedToggleText = this.add.text(0, -25, '1x', this.textStyle(38)).setOrigin(0.5, 0).setStroke('#06101f', 8);
+    const hit = this.add.zone(0, 0, 160, 90).setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => this.toggleSpeedMultiplier());
+    container.add([background, gloss, this.speedToggleText, hit]);
+  }
+
+  private toggleSpeedMultiplier(): void {
+    this.speedMultiplier = this.speedMultiplier === 1 ? 5 : 1;
+    this.speedToggleText?.setText(`${this.speedMultiplier}x`);
+    this.updateDebugState();
   }
 
   private drawTreasure(): void {
@@ -503,7 +523,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const previousDistance = active.distance;
-    active.distance = Math.min(this.track.total, active.distance + (TRACK_SPEED * delta) / 1000);
+    active.distance = Math.min(this.track.total, active.distance + (TRACK_SPEED * this.speedMultiplier * delta) / 1000);
     const position = this.positionOnTrack(active.distance);
     active.container.setPosition(position.x, position.y);
     this.faceTrackSide(active, position.side);
@@ -610,7 +630,6 @@ export class GameScene extends Phaser.Scene {
     this.updateDebugState();
 
     const style = COLOR_STYLES[cell.color];
-    this.cameras.main.shake(70, 0.0012);
     for (let index = 0; index < 18; index += 1) {
       const particle = this.add.circle(cell.image.x, cell.image.y, Phaser.Math.Between(5, 11), style.light, 0.86).setDepth(25);
       this.tweens.add({
@@ -1422,8 +1441,10 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_LOCKED_RESERVE__ = visibleReserve.filter((entry) => this.isReserveLocked(entry)).length;
     window.__RPIXEL_TREASURE_UNLOCKED__ = Boolean(this.treasure?.unlocked);
     window.__RPIXEL_COINS__ = this.coins;
+    window.__RPIXEL_SPEED_MULTIPLIER__ = this.speedMultiplier;
     window.__RPIXEL_BOARD_COLOR_COUNTS__ = this.countInitialBoardColors();
     window.__RPIXEL_AMMO_COLOR_TOTALS__ = this.countInitialAmmoTotals();
+    window.__RPIXEL_ALL_SHOOTER_AMMO__ = FIRST_LEVEL.pigs.map((pig) => pig.ammo);
     window.__RPIXEL_BOARD_SHAPE__ = {
       rows: this.rows,
       cols: this.cols,
@@ -1433,7 +1454,7 @@ export class GameScene extends Phaser.Scene {
     };
     window.__RPIXEL_VISIBLE_RESERVE__ = visibleReserve.map((entry) => {
       const position = this.reservePosition(entry.index);
-      return { index: entry.index, row: entry.row, col: entry.col, id: entry.pig.id, color: entry.pig.color, locked: this.isReserveLocked(entry), x: position.x, y: position.y };
+      return { index: entry.index, row: entry.row, col: entry.col, id: entry.pig.id, color: entry.pig.color, ammo: entry.pig.ammo, locked: this.isReserveLocked(entry), x: position.x, y: position.y };
     });
     window.__RPIXEL_VISIBLE_WAITING__ = this.slots.flatMap((slot, index) => {
       if (!slot) {

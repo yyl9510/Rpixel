@@ -14,22 +14,38 @@ Implement user requests: remove screen/camera vibration during block clearing; m
 Implement user requests: remove screen/camera vibration during block clearing; make every reserve shooter ammo number a multiple of 5 while preserving board/ammo balance; add 1x/5x speed toggle with current speed as 1x and make active shooter movement respect it; validate and deploy.
 
 ### Assigned Scope
-- TODO: summarize the agreed scope before delegating or implementing.
+- Remove camera/screen shake from block clearing.
+- Ensure first level board color totals and all shooter ammo values are balanced and every shooter number is a positive multiple of 5.
+- Add a visible 1x/5x speed toggle and make active track movement honor it.
+- Keep existing queue, waiting-slot, failure, and completion behavior covered by smoke tests.
 
 ### Deliverables
-- TODO: list expected files, artifacts, decisions, or reports.
+- Updated first level data and shooter queue balancing.
+- Updated gameplay scene with 1x/5x speed toggle, no camera shake, and debug state for regression tests.
+- Updated TypeScript debug declarations.
+- Expanded Playwright smoke coverage for ammo multiples, speed toggle behavior, queue/waiting interactions, overflow failure, and completion.
 
 ### Validation Plan
-- TODO: list tests, commands, source checks, or review criteria.
+- `npm run check`
+- `npm run test:smoke`
+- `git diff --check`
+- `rg -n "cameras\\.main\\.shake|shake\\(" src tests` should return no matches.
 
 ### Constraints And Non-Goals
-- TODO: list constraints such as no restart, no unrelated refactors, file ownership, or deployment limits.
+- Keep changes scoped to current H5 game implementation and smoke tests.
+- Do not reintroduce mystery/question-mark shooters.
+- Preserve GitHub Pages deployment path and existing game rules.
 
 ### Claimed Output
-- TODO: fill when reporting completion.
+- Implemented no-shake block clearing, 1x/5x speed toggle, and 5-multiple shooter ammo balancing.
+- Adjusted first level queue ordering so the level remains playable with the new ammo distribution.
+- Added smoke assertions for ammo multiples and measured 5x movement speed.
 
 ### Artifacts And Evidence
-- TODO: fill with changed files, commits, generated artifacts, logs, screenshots, or test output.
+- Changed files: `src/game/data/levels.ts`, `src/game/scenes/GameScene.ts`, `src/main.ts`, `tests/smoke.spec.ts`.
+- Local validation passed: `npm run check`; `npm run test:smoke` (8 passed); `git diff --check`.
+- Source check passed: no matches for `cameras.main.shake`/`shake(` in `src` or `tests`.
 
 ## Steps
 - 2026-05-30T17:30:50Z: task created
+- 2026-05-30T18:00:51Z: Add speed toggle ammo multiples and remove shake
