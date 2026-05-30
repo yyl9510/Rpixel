@@ -294,22 +294,26 @@ export class GameScene extends Phaser.Scene {
     const width = this.track.right - this.track.left;
     const height = this.track.bottom - this.track.top;
     const shadow = this.add.graphics().setDepth(2);
-    shadow.fillStyle(0x050915, 0.34);
-    shadow.fillRoundedRect(this.track.left - 10, this.track.top + 18, width + 20, height + 18, 92);
+    shadow.fillStyle(0x050915, 0.42);
+    shadow.fillRoundedRect(this.track.left - 16, this.track.top + 22, width + 32, height + 24, 104);
 
     const g = this.add.graphics().setDepth(3);
-    g.fillStyle(0x111a34, 1);
-    g.fillRoundedRect(this.track.left, this.track.top, width, height, 86);
-    g.lineStyle(12, 0x050915, 0.95);
-    g.strokeRoundedRect(this.track.left, this.track.top, width, height, 86);
-    g.fillStyle(0x253f67, 0.96);
-    g.fillRoundedRect(this.track.left + 14, this.track.top + 14, width - 28, height - 28, 74);
-    g.lineStyle(8, 0x82bdf9, 0.82);
-    g.strokeRoundedRect(this.track.left + 14, this.track.top + 14, width - 28, height - 28, 74);
-    g.lineStyle(5, 0xffffff, 0.5);
-    g.strokeRoundedRect(this.track.left + 30, this.track.top + 30, width - 60, height - 60, 60);
-    g.lineStyle(10, 0x071122, 0.72);
-    g.strokeRoundedRect(this.track.left + 48, this.track.top + 48, width - 96, height - 96, 48);
+    g.fillStyle(0x11152b, 1);
+    g.fillRoundedRect(this.track.left - 2, this.track.top - 2, width + 4, height + 4, 94);
+    g.lineStyle(9, 0x050915, 0.98);
+    g.strokeRoundedRect(this.track.left - 2, this.track.top - 2, width + 4, height + 4, 94);
+    g.fillStyle(0x41456e, 1);
+    g.fillRoundedRect(this.track.left + 8, this.track.top + 8, width - 16, height - 16, 88);
+    g.lineStyle(13, 0xd8f1ff, 0.9);
+    g.strokeRoundedRect(this.track.left + 8, this.track.top + 8, width - 16, height - 16, 88);
+    g.lineStyle(5, 0xffffff, 0.62);
+    g.strokeRoundedRect(this.track.left + 20, this.track.top + 20, width - 40, height - 40, 78);
+    g.fillStyle(0x34375c, 0.98);
+    g.fillRoundedRect(this.track.left + 34, this.track.top + 34, width - 68, height - 68, 68);
+    g.lineStyle(8, 0x151932, 0.92);
+    g.strokeRoundedRect(this.track.left + 44, this.track.top + 44, width - 88, height - 88, 58);
+    g.lineStyle(3, 0x8ea0cf, 0.26);
+    g.strokeRoundedRect(this.track.left + 58, this.track.top + 58, width - 116, height - 116, 48);
 
     this.conveyorLayer = this.add.container(0, 0).setDepth(4);
     this.drawTransferConveyorLanes();
@@ -329,10 +333,32 @@ export class GameScene extends Phaser.Scene {
     const laneY = (uploadStart.y + uploadEnd.y) / 2;
     const laneHeight = Math.abs(uploadStart.y - uploadEnd.y) + 34;
 
-    this.conveyorLayer.add(this.makeRoundRect(54, laneHeight, 18, 0x101830, 0.98, 0x9fd7ff, 4, 0.42, uploadStart.x, laneY));
-    this.conveyorLayer.add(this.makeRoundRect(54, laneHeight, 18, 0x101830, 0.98, 0x9fd7ff, 4, 0.42, exitStart.x, laneY));
-    this.conveyorLayer.add(this.makeRoundRect(116, 46, 18, 0x243f67, 0.98, 0x9fd7ff, 4, 0.5, this.track.startX + 56, this.track.bottom + 10));
-    this.conveyorLayer.add(this.makeRoundRect(144, 44, 16, 0x17243f, 0.92, 0x050915, 4, 0.8, this.track.startX + 98, this.track.bottom + 136));
+    this.conveyorLayer.add(this.makeRoundRect(58, laneHeight, 18, 0x242849, 0.98, 0xd8f1ff, 5, 0.7, uploadStart.x, laneY));
+    this.conveyorLayer.add(this.makeRoundRect(58, laneHeight, 18, 0x242849, 0.98, 0xd8f1ff, 5, 0.7, exitStart.x, laneY));
+    this.conveyorLayer.add(this.makeRoundRect(132, 50, 18, 0x3b3f67, 0.98, 0xd8f1ff, 5, 0.72, this.track.startX + 56, this.track.bottom + 10));
+    this.conveyorLayer.add(this.makeRoundRect(158, 50, 18, 0x202641, 0.95, 0x050915, 5, 0.86, this.track.startX + 98, this.track.bottom + 136));
+
+    const ramp = this.add.graphics();
+    ramp.fillStyle(0xeef7ff, 0.98);
+    ramp.fillRoundedRect(this.track.left - 130, this.track.bottom + 36, 106, 58, 7);
+    ramp.lineStyle(3, 0x7c8cac, 0.75);
+    ramp.strokeRoundedRect(this.track.left - 130, this.track.bottom + 36, 106, 58, 7);
+    for (let line = 0; line < 6; line += 1) {
+      ramp.lineStyle(4, 0x9fb0ca, 0.58);
+      ramp.lineBetween(this.track.left - 126, this.track.bottom + 44 + line * 8, this.track.left - 28, this.track.bottom + 44 + line * 8);
+    }
+    this.conveyorLayer.add(ramp);
+
+    const roller = this.add.graphics();
+    roller.fillStyle(0x5b66a0, 1);
+    roller.fillRoundedRect(this.track.left - 112, this.track.bottom + 88, 92, 54, 16);
+    roller.lineStyle(5, 0x050915, 0.9);
+    roller.strokeRoundedRect(this.track.left - 112, this.track.bottom + 88, 92, 54, 16);
+    for (let line = 0; line < 6; line += 1) {
+      roller.lineStyle(4, 0xbecaff, 0.62);
+      roller.lineBetween(this.track.left - 96 + line * 13, this.track.bottom + 94, this.track.left - 96 + line * 13, this.track.bottom + 136);
+    }
+    this.conveyorLayer.add(roller);
 
     for (let index = 0; index < 4; index += 1) {
       const upPlate = this.makeConveyorPlate(42, 24);
@@ -374,12 +400,14 @@ export class GameScene extends Phaser.Scene {
 
   private makeConveyorPlate(width: number, height: number): Phaser.GameObjects.Container {
     const container = this.add.container(0, 0);
-    container.add(this.add.ellipse(0, height * 0.22, width * 0.86, height * 0.58, 0x050915, 0.22));
-    container.add(this.makeRoundRect(width, height, 8, 0x2b5680, 0.98, 0x071122, 3, 0.88));
-    container.add(this.makeRoundRect(width - 14, 6, 3, 0xffffff, 0.24, undefined, 0, 1, -3, -height * 0.22));
-    container.add(this.makeRoundRect(width * 0.34, 5, 2, 0x9fe7ff, 0.52, undefined, 0, 1, width * 0.16, height * 0.18));
-    const arrow = this.add.triangle(width * 0.1, 0, -8, -10, -8, 10, 12, 0, 0xeaf9ff, 0.92).setStrokeStyle(2, 0x071122, 0.5);
-    container.add(arrow);
+    const g = this.add.graphics();
+    g.lineStyle(Math.max(8, height * 0.42), 0x8b91bd, 0.32);
+    g.lineBetween(-width * 0.28, -height * 0.42, width * 0.1, 0);
+    g.lineBetween(width * 0.1, 0, -width * 0.28, height * 0.42);
+    g.lineStyle(Math.max(3, height * 0.16), 0xdbe6ff, 0.18);
+    g.lineBetween(-width * 0.22, -height * 0.35, width * 0.02, 0);
+    g.lineBetween(width * 0.02, 0, -width * 0.22, height * 0.35);
+    container.add(g);
     return container;
   }
 
