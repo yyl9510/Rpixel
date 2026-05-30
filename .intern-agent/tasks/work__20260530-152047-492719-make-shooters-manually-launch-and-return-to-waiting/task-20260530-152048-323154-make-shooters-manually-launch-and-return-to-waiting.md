@@ -54,3 +54,4 @@ User requests: death only when waiting area exceeds five; both bottom reserve co
 ## Steps
 - 2026-05-30T15:20:48Z: task created
 - 2026-05-30T15:30:45Z: Make shooters manually launch and return to waiting
+  - pushed_commit: 4335aa6
