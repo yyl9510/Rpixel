@@ -15,6 +15,10 @@ const RESERVE_VISIBLE = 9;
 const RESERVE_COLS = 3;
 const TRACK_SPEED = 820;
 const MANUAL_LAUNCH_HIT_RADIUS = 108;
+const RESERVE_HIT_WIDTH = 206;
+const RESERVE_HIT_HEIGHT = 178;
+const WAITING_HIT_WIDTH = 178;
+const WAITING_HIT_HEIGHT = 170;
 
 type Side = 'bottom' | 'right' | 'top' | 'left';
 type SlotStatus = 'entering' | 'stuck' | 'activating';
@@ -105,6 +109,7 @@ export class GameScene extends Phaser.Scene {
   private reservedTargetKeys = new Set<string>();
   private slotChromeLayer?: Phaser.GameObjects.Container;
   private reserveLayer?: Phaser.GameObjects.Container;
+  private manualHitLayer?: Phaser.GameObjects.Container;
   private blocksLeftText?: Phaser.GameObjects.Text;
   private activeCapacityText?: Phaser.GameObjects.Text;
   private coinText?: Phaser.GameObjects.Text;
@@ -153,6 +158,7 @@ export class GameScene extends Phaser.Scene {
     this.drawSlotChrome();
 
     this.reserveLayer = this.add.container(0, 0).setDepth(12);
+    this.manualHitLayer = this.add.container(0, 0).setDepth(70);
     this.renderReserve();
     this.drawBoosterBar();
     this.bindManualLaunchFallback();
@@ -333,6 +339,7 @@ export class GameScene extends Phaser.Scene {
       token.container.setAlpha(locked ? 0.74 : 1);
       this.reserveLayer?.add(token.container);
     });
+    this.renderManualLaunchHitZones();
   }
 
   private drawBoosterBar(): void {
@@ -449,6 +456,7 @@ export class GameScene extends Phaser.Scene {
     this.clearPigTokenClick(slot.container);
     this.launchShooter(slot.pig, slot.container, slot.body, slot.ammoText);
     this.compactWaitingSlots();
+    this.renderManualLaunchHitZones();
     this.updateDebugState();
   }
 
@@ -766,6 +774,7 @@ export class GameScene extends Phaser.Scene {
       ammoText: active.ammoText,
     };
     this.slots[slotIndex] = slot;
+    this.renderManualLaunchHitZones();
 
     const slotPosition = this.slotPosition(slotIndex);
     this.tweens.add({
@@ -782,6 +791,7 @@ export class GameScene extends Phaser.Scene {
         }
         slot.status = 'stuck';
         this.bindPigTokenClick(slot.container, 0.72, () => this.handleSlotClick(slot.slotIndex));
+        this.renderManualLaunchHitZones();
         this.updateDebugState();
       },
     });
@@ -810,6 +820,7 @@ export class GameScene extends Phaser.Scene {
         ease: 'Quad.easeOut',
       });
     });
+    this.renderManualLaunchHitZones();
   }
 
   private findEdgeTarget(color: PigColor): EdgeTarget | null {
@@ -995,6 +1006,57 @@ export class GameScene extends Phaser.Scene {
   private clearPigTokenClick(container: Phaser.GameObjects.Container): void {
     container.removeAllListeners('pointerdown');
     container.disableInteractive();
+  }
+
+  private renderManualLaunchHitZones(): void {
+    if (!this.manualHitLayer) {
+      return;
+    }
+
+    this.manualHitLayer.removeAll(true);
+    this.visibleReserveEntries().forEach((entry) => {
+      if (this.isReserveLocked(entry) || entry.row !== 0) {
+        return;
+      }
+
+      const position = this.reservePosition(entry.index);
+      this.manualHitLayer?.add(this.createManualLaunchZone(position.x, position.y, RESERVE_HIT_WIDTH, RESERVE_HIT_HEIGHT, { type: 'reserve', index: entry.index }));
+    });
+
+    this.slots.forEach((slot, index) => {
+      if (!slot || slot.status === 'activating') {
+        return;
+      }
+
+      const position = this.slotPosition(index);
+      this.manualHitLayer?.add(this.createManualLaunchZone(position.x, position.y, WAITING_HIT_WIDTH, WAITING_HIT_HEIGHT, { type: 'waiting', index }));
+    });
+  }
+
+  private createManualLaunchZone(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    target: ManualLaunchTarget,
+  ): Phaser.GameObjects.Zone {
+    const zone = this.add.zone(x, y, width, height).setInteractive({ useHandCursor: true });
+    zone.on('pointerdown', (pointer: Phaser.Input.Pointer) => this.launchFromManualTarget(target, pointer));
+    return zone;
+  }
+
+  private launchFromManualTarget(target: ManualLaunchTarget, pointer: Phaser.Input.Pointer): void {
+    if (this.gameOver || this.resolvingShooters.length >= SLOT_CAPACITY) {
+      return;
+    }
+
+    this.lastDirectPigPointerStamp = this.pointerEventStamp(pointer);
+    if (target.type === 'waiting') {
+      this.handleSlotClick(target.index);
+      return;
+    }
+
+    this.handleReserveClick(target.index);
   }
 
   private bindManualLaunchFallback(): void {
