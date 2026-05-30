@@ -49,3 +49,4 @@ Implement user requests: remove screen/camera vibration during block clearing; m
 ## Steps
 - 2026-05-30T17:30:50Z: task created
 - 2026-05-30T18:00:51Z: Add speed toggle ammo multiples and remove shake
+  - pushed_commit: ab4438c
