@@ -833,13 +833,17 @@ export class GameScene extends Phaser.Scene {
   private findVisibleCell(side: Side, lineIndex: number, allowedReservedKey?: string): BoardCell | null {
     for (const [row, col] of this.scanSequence(side, lineIndex)) {
       const cell = this.cells[row]?.[col] ?? null;
-      if (!cell || cell.cleared || cell.pending) {
+      if (!cell || cell.cleared) {
         continue;
       }
 
       const key = this.cellKey(cell);
+      if (cell.pending) {
+        return null;
+      }
+
       if (this.reservedTargetKeys.has(key) && key !== allowedReservedKey) {
-        continue;
+        return null;
       }
 
       if (cell) {
@@ -1224,6 +1228,13 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_COINS__ = this.coins;
     window.__RPIXEL_BOARD_COLOR_COUNTS__ = this.countInitialBoardColors();
     window.__RPIXEL_AMMO_COLOR_TOTALS__ = this.countInitialAmmoTotals();
+    window.__RPIXEL_BOARD_SHAPE__ = {
+      rows: this.rows,
+      cols: this.cols,
+      filled: this.totalCells,
+      empty: this.rows * this.cols - this.totalCells,
+      rowWidths: FIRST_LEVEL.grid.map((row) => row.filter((color) => color !== null).length),
+    };
     window.__RPIXEL_VISIBLE_RESERVE__ = visibleReserve.map((entry) => {
       const position = this.reservePosition(entry.index);
       return { index: entry.index, row: entry.row, col: entry.col, id: entry.pig.id, color: entry.pig.color, locked: this.isReserveLocked(entry), x: position.x, y: position.y };

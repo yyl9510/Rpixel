@@ -3,9 +3,25 @@ import { PIG_COLORS, type LevelDefinition, type Pig, type PigColor, type PixelCe
 const ROWS = 21;
 const COLS = 17;
 
+function isShapeCell(row: number, col: number): boolean {
+  const center = (COLS - 1) / 2;
+  const halfWidths = [2, 4, 5, 6, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 7, 7, 7, 6, 5, 4, 3];
+  if (Math.abs(col - center) > halfWidths[row]) {
+    return false;
+  }
+
+  const isDoorwayVoid = row >= 14 && row <= 20 && col >= 6 && col <= 10;
+  const isShoulderCut = row >= 16 && ((col >= 1 && col <= 2) || (col >= 14 && col <= 15));
+  return !isDoorwayVoid && !isShoulderCut;
+}
+
 function makeReferenceGrid(): PixelCellColor[][] {
   return Array.from({ length: ROWS }, (_, row) =>
     Array.from({ length: COLS }, (_, col) => {
+      if (!isShapeCell(row, col)) {
+        return null;
+      }
+
       let color: PixelCellColor = row >= 16 ? 'green' : 'blue';
 
       if (row >= 11 && row <= 20 && col >= 7 && col <= 10) {
@@ -24,7 +40,7 @@ function makeReferenceGrid(): PixelCellColor[][] {
         color = 'white';
       }
 
-      if (row >= 4 && row <= 14 && col >= 2 && col <= 14 && (row * 7 + col * 5) % 17 === 0) {
+      if (row >= 4 && row <= 12 && col >= 5 && col <= 11 && (row * 7 + col * 5) % 17 === 0) {
         color = 'purple';
       }
 
@@ -90,21 +106,21 @@ function buildBalancedPigs(board: PixelCellColor[][]): Pig[] {
   const [purpleA = 0, purpleB = 0, purpleC = 0, purpleD = 0, purpleE = 0] = splitAmmo(totals.purple, 5);
 
   const queue: Array<[PigColor, number]> = [
-    ['white', whiteFirst],
     ['purple', purpleA],
+    ['purple', purpleB],
+    ['purple', purpleC],
+    ['purple', purpleD],
+    ['purple', purpleE],
+    ['white', whiteFirst],
     ['green', greenFirst],
     ['red', redFirst],
     ['red', redSecond],
     ['blue', blueFirst],
-    ['purple', purpleB],
     ['white', whiteSecond],
-    ['purple', purpleC],
     ['orange', totals.orange],
     ['yellow', totals.yellow],
-    ['purple', purpleD],
     ['blue', blueSecond],
     ['green', greenSecond],
-    ['purple', purpleE],
   ];
 
   queue.forEach(([color, ammo]) => addPig(color, ammo));

@@ -22,6 +22,7 @@ declare global {
     __RPIXEL_EXPOSED_COLORS__?: string[];
     __RPIXEL_BOARD_COLOR_COUNTS__?: Record<string, number>;
     __RPIXEL_AMMO_COLOR_TOTALS__?: Record<string, number>;
+    __RPIXEL_BOARD_SHAPE__?: { rows: number; cols: number; filled: number; empty: number; rowWidths: number[] };
     __RPIXEL_SHOT_LOG__?: Array<{ pigId: string; color: string; side: string; lineIndex: number; cell: string; distance: number }>;
   }
 }

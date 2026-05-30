@@ -14,22 +14,32 @@ Continue improving the Rpixel H5 Pixel Flow prototype beyond the latest deployed
 Continue improving the Rpixel H5 Pixel Flow prototype beyond the latest deployed fixes: inspect current gameplay/UI against the PRD, implement the next high-impact conformance improvements, validate locally, push, and verify GitHub Pages deployment.
 
 ### Assigned Scope
-- TODO: summarize the agreed scope before delegating or implementing.
+- Continue the Pixel Flow PRD conformance pass after the deployed waiting/capacity fixes.
+- Focus this slice on board shape fidelity and stricter outer-layer targeting rules without changing the user's latest queue/waiting-area interaction model.
 
 ### Deliverables
-- TODO: list expected files, artifacts, decisions, or reports.
+- Irregular/arched level board data with color-balanced shooter ammo totals.
+- Target visibility logic that treats pending/reserved front blocks as blockers instead of allowing shots through them.
+- Smoke coverage for irregular board shape plus updated end-to-end autoplay tolerances for the larger shaped level.
 
 ### Validation Plan
-- TODO: list tests, commands, source checks, or review criteria.
+- `npm run check`
+- `npm run test:smoke`
+- GitHub Pages deployment check after merging to `main`.
 
 ### Constraints And Non-Goals
-- TODO: list constraints such as no restart, no unrelated refactors, file ownership, or deployment limits.
+- Preserve the latest user-specified rules: first reserve row and waiting slots are manually launchable, active shooters max 5, waiting slots compact left, ammo-zero shooters disappear immediately, and waiting overflow is the only death condition.
+- Do not reintroduce mystery/question-mark shooters.
 
 ### Claimed Output
-- TODO: fill when reporting completion.
+- Implemented an irregular board silhouette with a doorway cutout while preserving exact per-color ammo/block balance.
+- Updated outer-layer line-of-sight so a pending or reserved front block blocks deeper targets until it is cleared.
+- Updated smoke tests to assert irregular shape metadata and keep the complete-level autoplay stable on the shaped board.
 
 ### Artifacts And Evidence
-- TODO: fill with changed files, commits, generated artifacts, logs, screenshots, or test output.
+- Changed files: `src/game/data/levels.ts`, `src/game/scenes/GameScene.ts`, `src/main.ts`, `tests/smoke.spec.ts`.
+- Validation passed locally: `npm run check`; `npm run test:smoke` (`6 passed`).
 
 ## Steps
 - 2026-05-30T16:03:47Z: task created
+- 2026-05-30T16:21:28Z: Add shaped board and stricter target blockers
