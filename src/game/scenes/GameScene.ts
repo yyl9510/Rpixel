@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLOR_STYLES } from '../assets';
 import { FIRST_LEVEL } from '../data/levels';
-import type { Pig, PigColor } from '../types';
+import { PIG_COLORS, type Pig, type PigColor } from '../types';
 
 const GAME_WIDTH = 1080;
 const GAME_HEIGHT = 1920;
@@ -13,6 +13,8 @@ const TRACK_PAD = 116;
 const SLOT_Y = 1360;
 const RESERVE_VISIBLE = 9;
 const RESERVE_COLS = 3;
+const TRACK_SPEED = 820;
+const FIRE_COOLDOWN_MS = 32;
 
 type Side = 'bottom' | 'right' | 'top' | 'left';
 type SlotStatus = 'entering' | 'stuck' | 'activating';
@@ -71,6 +73,8 @@ interface ResolvingShooter {
   body: Phaser.GameObjects.Container;
   ammoText: Phaser.GameObjects.Text;
   distance: number;
+  orbiting: boolean;
+  fireCooldownMs: number;
   targetKey?: string;
 }
 
@@ -130,6 +134,15 @@ export class GameScene extends Phaser.Scene {
     this.renderReserve();
     this.drawBoosterBar();
     this.updateDebugState();
+  }
+
+  update(_time: number, delta: number): void {
+    if (this.gameOver) {
+      return;
+    }
+
+    [...this.resolvingShooters].forEach((active) => this.updateResolvingShooter(active, delta));
+    this.publishActiveShooterDebug();
   }
 
   private drawBackground(): void {
@@ -489,8 +502,9 @@ export class GameScene extends Phaser.Scene {
       body: slot.body,
       ammoText: slot.ammoText,
       distance: 0,
+      orbiting: false,
+      fireCooldownMs: 0,
     };
-    this.reserveTarget(active, target.cell);
     this.resolvingShooters.push(active);
     this.updateDebugState();
 
@@ -504,79 +518,72 @@ export class GameScene extends Phaser.Scene {
       onUpdate: () => this.faceCenter(active),
       onComplete: () => {
         active.distance = 0;
-        this.moveResolvingToTarget(active, target);
+        active.orbiting = true;
+        active.fireCooldownMs = 0;
+        this.faceCenter(active);
       },
     });
   }
 
-  private moveResolvingToTarget(active: ResolvingShooter, target: EdgeTarget): void {
-    if (this.gameOver || !this.isResolvingActive(active)) {
+  private updateResolvingShooter(active: ResolvingShooter, delta: number): void {
+    if (!active.orbiting || !this.isResolvingActive(active)) {
       return;
     }
 
-    this.reserveTarget(active, target.cell);
-    const travel = (target.distance - active.distance + this.track.total) % this.track.total;
-    const state = { value: 0 };
-    this.tweens.add({
-      targets: state,
-      value: travel,
-      duration: Math.max(120, travel * 0.22),
-      ease: 'Sine.easeInOut',
-      onUpdate: () => {
-        const distance = (active.distance + state.value) % this.track.total;
-        const position = this.positionOnTrack(distance);
-        active.container.setPosition(position.x, position.y);
-        this.faceCenter(active);
-      },
-      onComplete: () => {
-        active.distance = target.distance;
-        const position = this.positionOnTrack(active.distance);
-        active.container.setPosition(position.x, position.y);
-        this.faceCenter(active);
-        this.shootCurrentLine(active, target);
-      },
-    });
-  }
+    active.distance = (active.distance + (TRACK_SPEED * delta) / 1000) % this.track.total;
+    const position = this.positionOnTrack(active.distance);
+    active.container.setPosition(position.x, position.y);
+    this.faceCenter(active);
+    active.fireCooldownMs = Math.max(0, active.fireCooldownMs - delta);
 
-  private shootCurrentLine(active: ResolvingShooter, target: EdgeTarget): void {
-    if (this.gameOver || !this.isResolvingActive(active)) {
-      return;
-    }
-
-    if (active.pig.ammo <= 0) {
+    if (active.pig.ammo <= 0 || !this.hasRemainingColor(active.pig.color)) {
       this.finishResolvingShooter(active);
       return;
     }
 
-    const visibleTarget = this.findVisibleTarget(target.side, target.lineIndex, active.pig.color, active.targetKey);
-    if (!visibleTarget) {
-      this.releaseReservedTarget(active);
-      this.seekNextTarget(active);
+    if (active.fireCooldownMs > 0) {
       return;
     }
 
-    this.fireProjectile(active, visibleTarget, () => {
-      if (this.gameOver) {
-        return;
-      }
+    const target = this.findForwardTarget(active, position);
+    if (!target) {
+      return;
+    }
 
-      if (active.pig.ammo <= 0) {
+    active.fireCooldownMs = FIRE_COOLDOWN_MS;
+    this.reserveTarget(active, target);
+    this.fireProjectile(active, target, () => {
+      if (!this.gameOver && this.isResolvingActive(active) && (active.pig.ammo <= 0 || !this.hasRemainingColor(active.pig.color))) {
         this.finishResolvingShooter(active);
-        return;
       }
-
-      this.time.delayedCall(18, () => this.shootCurrentLine(active, target));
     });
   }
 
-  private seekNextTarget(active: ResolvingShooter): void {
-    const nextTarget = this.findEdgeTarget(active.pig.color);
-    if (!nextTarget || active.pig.ammo <= 0) {
-      this.finishResolvingShooter(active);
-      return;
+  private findForwardTarget(active: ResolvingShooter, position: TrackPosition): BoardCell | null {
+    const lineIndex = this.lineIndexForTrackPosition(position);
+    if (lineIndex === null) {
+      return null;
     }
 
-    this.moveResolvingToTarget(active, nextTarget);
+    return this.findVisibleTarget(position.side, lineIndex, active.pig.color, active.targetKey);
+  }
+
+  private lineIndexForTrackPosition(position: TrackPosition): number | null {
+    if (position.side === 'bottom' || position.side === 'top') {
+      if (position.x < this.boardX || position.x >= this.boardX + this.boardWidth) {
+        return null;
+      }
+      return Phaser.Math.Clamp(Math.floor((position.x - this.boardX) / this.cellSize), 0, this.cols - 1);
+    }
+
+    if (position.y < this.boardY || position.y >= this.boardY + this.boardHeight) {
+      return null;
+    }
+    return Phaser.Math.Clamp(Math.floor((position.y - this.boardY) / this.cellSize), 0, this.rows - 1);
+  }
+
+  private hasRemainingColor(color: PigColor): boolean {
+    return this.cells.some((row) => row.some((cell) => Boolean(cell && !cell.cleared && cell.color === color)));
   }
 
   private fireProjectile(active: ResolvingShooter, target: BoardCell, onComplete: () => void): void {
@@ -1086,11 +1093,50 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_LOCKED_RESERVE__ = this.reserve.slice(0, RESERVE_VISIBLE).filter((pig, index) => this.isReserveLocked(pig, index)).length;
     window.__RPIXEL_TREASURE_UNLOCKED__ = Boolean(this.treasure?.unlocked);
     window.__RPIXEL_COINS__ = this.coins;
+    window.__RPIXEL_BOARD_COLOR_COUNTS__ = this.countInitialBoardColors();
+    window.__RPIXEL_AMMO_COLOR_TOTALS__ = this.countInitialAmmoTotals();
     window.__RPIXEL_VISIBLE_RESERVE__ = this.reserve.slice(0, RESERVE_VISIBLE).map((pig, index) => {
       const position = this.reservePosition(index);
       return { index, color: pig.color, locked: this.isReserveLocked(pig, index), x: position.x, y: position.y };
     });
+    this.publishActiveShooterDebug();
     window.__RPIXEL_EXPOSED_COLORS__ = this.getExposedColors();
+  }
+
+  private publishActiveShooterDebug(): void {
+    window.__RPIXEL_ACTIVE_SHOOTERS__ = this.resolvingShooters.map((active) => ({
+      color: active.pig.color,
+      ammo: active.pig.ammo,
+      distance: Math.round(active.distance),
+      x: Math.round(active.container.x),
+      y: Math.round(active.container.y),
+      orbiting: active.orbiting,
+    }));
+  }
+
+  private emptyColorTotals(): Record<PigColor, number> {
+    return PIG_COLORS.reduce(
+      (totals, color) => ({ ...totals, [color]: 0 }),
+      {} as Record<PigColor, number>,
+    );
+  }
+
+  private countInitialBoardColors(): Record<PigColor, number> {
+    const totals = this.emptyColorTotals();
+    FIRST_LEVEL.grid.flat().forEach((color) => {
+      if (color !== null) {
+        totals[color] += 1;
+      }
+    });
+    return totals;
+  }
+
+  private countInitialAmmoTotals(): Record<PigColor, number> {
+    const totals = this.emptyColorTotals();
+    FIRST_LEVEL.pigs.forEach((pig) => {
+      totals[pig.color] += pig.ammo;
+    });
+    return totals;
   }
 
   private getExposedColors(): string[] {
