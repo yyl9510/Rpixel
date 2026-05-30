@@ -14,16 +14,29 @@ User provided latest main menu and gameplay screenshots and asked to start imple
 User provided latest main menu and gameplay screenshots and asked to start implementing closer visual alignment. Scope: keep existing gameplay rules, but visually align main menu and gameplay screens with reference: dense pixel board, thick arrow track, five slots, two-row shooter reserve, bottom prop buttons, stronger 3D/clay generated assets, and deploy to GitHub Pages after validation.
 
 ### Assigned Scope
-- TODO: summarize the agreed scope before delegating or implementing.
+- Align the existing Phaser H5 prototype more closely with the provided main-menu and gameplay screenshots.
+- Preserve the already-implemented Pixel Flow state rules while changing layout, generated assets, and level density.
+- Keep backend, purchase, ads, ranking, and account behavior as static/mock UI only.
 
 ### Deliverables
-- TODO: list expected files, artifacts, decisions, or reports.
+- Dense reference-style gameplay board with a larger pixel-art matrix and matching shooter reserves.
+- Gameplay UI closer to screenshot: thick rounded track with arrows, large central board, 5 slots, compact reserve rows, and bottom prop bar.
+- More polished generated block/shooter/button visuals where practical in code-native Phaser graphics.
+- Updated smoke tests that validate behavior without relying on old hardcoded reserve coordinates.
+- Fresh local validation, screenshot smoke artifacts, merge to main, and GitHub Pages verification.
 
 ### Validation Plan
-- TODO: list tests, commands, source checks, or review criteria.
+- Run npm run check.
+- Run npm run test:smoke.
+- Use Playwright to inspect/screenshot menu, gameplay, stuck-slot state, and win state.
+- Verify GitHub Actions succeeds after merge to main.
+- Verify public GitHub Pages loads the latest bundle and passes a public browser smoke path.
 
 ### Constraints And Non-Goals
-- TODO: list constraints such as no restart, no unrelated refactors, file ownership, or deployment limits.
+- Do not replace the existing Phaser/Vite stack.
+- Do not add real networked purchases, ads, leaderboards, account, or notification logic.
+- Do not weaken the already validated slot, stuck, exposed-edge, combo, win, and fail rules to make visuals easier.
+- Prefer procedural/code-native assets in this pass rather than introducing external generated bitmap asset files.
 
 ### Claimed Output
 - TODO: fill when reporting completion.
@@ -33,3 +46,4 @@ User provided latest main menu and gameplay screenshots and asked to start imple
 
 ## Steps
 - 2026-05-30T01:56:17Z: task created
+- 2026-05-30T01:58:42Z: Document screenshot visual alignment scope
