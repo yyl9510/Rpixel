@@ -83,6 +83,39 @@ test('loads the menu and drives reserve-to-slot gameplay', async ({ page }) => {
   await page.waitForFunction((before) => (window.__RPIXEL_BLOCKS_LEFT__ ?? before) < before, initialBlocks, { timeout: 10_000 });
 });
 
+test('can run multiple shooters on the track at once', async ({ page }) => {
+  await page.reload();
+  await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'menu');
+
+  const { box } = await gameBox(page);
+  if (!box) {
+    return;
+  }
+
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.8);
+  await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'game');
+
+  const blue = (await visibleReserve(page)).find((item) => !item.locked && item.color === 'blue');
+  expect(blue).toBeTruthy();
+  if (!blue) {
+    return;
+  }
+  await clickGame(page, box, blue.x, blue.y);
+  await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) >= 1, { timeout: 10_000 });
+
+  const green = (await visibleReserve(page)).find((item) => !item.locked && item.color === 'green');
+  expect(green).toBeTruthy();
+  if (!green) {
+    return;
+  }
+  await clickGame(page, box, green.x, green.y);
+  await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) >= 2, { timeout: 10_000 });
+
+  const active = await page.evaluate(() => window.__RPIXEL_ACTIVE_PIGS__ ?? 0);
+  expect(active).toBeGreaterThanOrEqual(2);
+  expect(active).toBeLessThanOrEqual(5);
+});
+
 test('fails only when all active slots are stuck and another reserve shooter is clicked', async ({ page }) => {
   await page.reload();
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'menu');

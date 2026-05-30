@@ -36,10 +36,6 @@ function makeReferenceGrid(): PixelCellColor[][] {
         color = 'green';
       }
 
-      if (row >= ROWS - 3) {
-        return null;
-      }
-
       if (row === Math.floor(ROWS / 2) && col === Math.floor(COLS / 2)) {
         return null;
       }

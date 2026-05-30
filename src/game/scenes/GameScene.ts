@@ -71,13 +71,15 @@ interface ResolvingShooter {
   body: Phaser.GameObjects.Container;
   ammoText: Phaser.GameObjects.Text;
   distance: number;
+  targetKey?: string;
 }
 
 export class GameScene extends Phaser.Scene {
   private cells: Array<Array<BoardCell | null>> = [];
   private slots: Array<SlotShooter | null> = [];
   private reserve: Pig[] = [];
-  private resolvingShooter: ResolvingShooter | null = null;
+  private resolvingShooters: ResolvingShooter[] = [];
+  private reservedTargetKeys = new Set<string>();
   private slotChromeLayer?: Phaser.GameObjects.Container;
   private reserveLayer?: Phaser.GameObjects.Container;
   private blocksLeftText?: Phaser.GameObjects.Text;
@@ -108,7 +110,8 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_SCENE__ = 'game';
     this.gameOver = false;
     this.evaluationQueued = false;
-    this.resolvingShooter = null;
+    this.resolvingShooters = [];
+    this.reservedTargetKeys.clear();
     this.treasure = undefined;
     this.coins = 10100;
     this.clearedCells = 0;
@@ -121,7 +124,6 @@ export class GameScene extends Phaser.Scene {
     this.drawTrack();
     this.drawBoard();
     this.drawTreasure();
-    this.drawBoardForeground();
     this.drawSlotChrome();
 
     this.reserveLayer = this.add.container(0, 0).setDepth(12);
@@ -264,47 +266,6 @@ export class GameScene extends Phaser.Scene {
     );
   }
 
-  private drawBoardForeground(): void {
-    const layer = this.add.container(0, 0).setDepth(32);
-    const floorTop = this.boardY + this.boardHeight - 126;
-    const floorBottom = this.boardY + this.boardHeight - 12;
-    const floorHeight = floorBottom - floorTop;
-    const left = this.boardX + 8;
-    const right = this.boardX + this.boardWidth - 8;
-    const width = right - left;
-
-    layer.add(this.add.rectangle(this.center.x, floorTop - 8, width + 10, 18, 0x050915, 0.18));
-    layer.add(this.makeRoundRect(width + 14, floorHeight + 20, 18, 0x17213e, 0.94, 0x050915, 5, 0.85, this.center.x, floorTop + floorHeight / 2));
-
-    const bayCount = 4;
-    const gap = 20;
-    const bayWidth = (width - gap * (bayCount + 1)) / bayCount;
-    for (let index = 0; index < bayCount; index += 1) {
-      const x = left + gap + bayWidth / 2 + index * (bayWidth + gap);
-      layer.add(this.makeRoundRect(bayWidth, 86, 12, 0xdff1ff, 0.92, 0xffffff, 3, 0.55, x, floorTop + 48));
-      layer.add(this.add.rectangle(x, floorTop + 76, bayWidth - 18, 34, 0x9db4e8, 0.34));
-      layer.add(this.add.rectangle(x - bayWidth / 2 - 10, floorTop + 50, 16, 118, 0x272d43).setStrokeStyle(4, 0x050915, 0.7));
-
-      const parked = this.add.image(x, floorTop + 51, 'shooter-blue').setScale(0.35).setAngle(index % 2 === 0 ? -12 : 10);
-      layer.add(parked);
-    }
-    layer.add(this.add.rectangle(right - 4, floorTop + 50, 16, 118, 0x272d43).setStrokeStyle(4, 0x050915, 0.7));
-
-    const pipeY = floorBottom - 18;
-    const pipe = this.add.graphics();
-    pipe.fillStyle(0xff7a18, 1);
-    pipe.lineStyle(7, 0x7a2e00, 1);
-    pipe.fillRoundedRect(left - 2, pipeY - 24, width + 4, 48, 14);
-    pipe.strokeRoundedRect(left - 2, pipeY - 24, width + 4, 48, 14);
-    pipe.fillStyle(0xff9b2f, 0.48);
-    for (let x = left + 10; x < right - 20; x += 36) {
-      pipe.fillRect(x, pipeY - 18, 18, 36);
-    }
-    layer.add(pipe);
-    layer.add(this.add.circle(left - 4, pipeY, 27, 0xff8a22).setStrokeStyle(7, 0x7a2e00));
-    layer.add(this.add.circle(right + 4, pipeY, 27, 0xff8a22).setStrokeStyle(7, 0x7a2e00));
-  }
-
   private drawSlotChrome(): void {
     this.slotChromeLayer = this.add.container(0, 0).setDepth(10);
     this.slotChromeLayer.add(this.makeRoundRect(88, 190, 20, 0xdee9ff, 0.8, 0x10162f, 5, 1, 44, this.track.bottom - 54));
@@ -426,7 +387,7 @@ export class GameScene extends Phaser.Scene {
 
     const slotIndex = this.slots.findIndex((slot) => slot === null);
     if (slotIndex === -1) {
-      if (!this.resolvingShooter && this.slots.every((slot) => slot?.status === 'stuck')) {
+      if (this.resolvingShooters.length === 0 && this.slots.every((slot) => slot?.status === 'stuck')) {
         if (this.hasActivatableStuckSlot()) {
           this.evaluateSlots();
           return;
@@ -479,12 +440,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   private evaluateSlots(): void {
-    if (this.gameOver || this.resolvingShooter) {
+    if (this.gameOver) {
       return;
     }
 
     this.evaluationQueued = false;
+    let activated = false;
     for (const slot of this.slots) {
+      if (this.resolvingShooters.length >= SLOT_CAPACITY) {
+        break;
+      }
+
       if (!slot || slot.status !== 'stuck' || slot.pig.ammo <= 0) {
         continue;
       }
@@ -492,11 +458,13 @@ export class GameScene extends Phaser.Scene {
       const target = this.findEdgeTarget(slot.pig.color);
       if (target) {
         this.activateSlot(slot, target);
-        return;
+        activated = true;
       }
     }
 
-    this.updateDebugState();
+    if (!activated) {
+      this.updateDebugState();
+    }
   }
 
   private hasActivatableStuckSlot(): boolean {
@@ -522,7 +490,8 @@ export class GameScene extends Phaser.Scene {
       ammoText: slot.ammoText,
       distance: 0,
     };
-    this.resolvingShooter = active;
+    this.reserveTarget(active, target.cell);
+    this.resolvingShooters.push(active);
     this.updateDebugState();
 
     this.tweens.add({
@@ -541,10 +510,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private moveResolvingToTarget(active: ResolvingShooter, target: EdgeTarget): void {
-    if (this.gameOver || this.resolvingShooter !== active) {
+    if (this.gameOver || !this.isResolvingActive(active)) {
       return;
     }
 
+    this.reserveTarget(active, target.cell);
     const travel = (target.distance - active.distance + this.track.total) % this.track.total;
     const state = { value: 0 };
     this.tweens.add({
@@ -569,7 +539,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private shootCurrentLine(active: ResolvingShooter, target: EdgeTarget): void {
-    if (this.gameOver || this.resolvingShooter !== active) {
+    if (this.gameOver || !this.isResolvingActive(active)) {
       return;
     }
 
@@ -578,8 +548,9 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const visibleTarget = this.findVisibleTarget(target.side, target.lineIndex, active.pig.color);
+    const visibleTarget = this.findVisibleTarget(target.side, target.lineIndex, active.pig.color, active.targetKey);
     if (!visibleTarget) {
+      this.releaseReservedTarget(active);
       this.seekNextTarget(active);
       return;
     }
@@ -609,6 +580,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private fireProjectile(active: ResolvingShooter, target: BoardCell, onComplete: () => void): void {
+    this.releaseReservedTarget(active);
     target.pending = true;
     active.pig.ammo -= 1;
     active.ammoText.setText(String(active.pig.ammo));
@@ -646,6 +618,7 @@ export class GameScene extends Phaser.Scene {
 
     cell.cleared = true;
     cell.pending = false;
+    this.reservedTargetKeys.delete(this.cellKey(cell));
     this.clearedCells += 1;
     this.updateProgressText();
     this.updateDebugState();
@@ -695,6 +668,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.checkTreasureUnlock();
+    this.queueEvaluation(30);
 
     if (this.clearedCells >= this.totalCells) {
       this.time.delayedCall(260, () => this.showResult(true, `LEVEL ${FIRST_LEVEL.id} COMPLETED!`));
@@ -764,11 +738,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private finishResolvingShooter(active: ResolvingShooter): void {
-    if (this.resolvingShooter !== active) {
+    const index = this.resolvingShooters.indexOf(active);
+    if (index === -1) {
       return;
     }
 
-    this.resolvingShooter = null;
+    this.releaseReservedTarget(active);
+    this.resolvingShooters.splice(index, 1);
     this.tweens.add({
       targets: active.container,
       scale: 0.15,
@@ -800,15 +776,24 @@ export class GameScene extends Phaser.Scene {
     return null;
   }
 
-  private findVisibleTarget(side: Side, lineIndex: number, color: PigColor): BoardCell | null {
-    const cell = this.findVisibleCell(side, lineIndex);
+  private findVisibleTarget(side: Side, lineIndex: number, color: PigColor, allowedReservedKey?: string): BoardCell | null {
+    const cell = this.findVisibleCell(side, lineIndex, allowedReservedKey);
     return cell?.color === color ? cell : null;
   }
 
-  private findVisibleCell(side: Side, lineIndex: number): BoardCell | null {
+  private findVisibleCell(side: Side, lineIndex: number, allowedReservedKey?: string): BoardCell | null {
     for (const [row, col] of this.scanSequence(side, lineIndex)) {
       const cell = this.cells[row]?.[col] ?? null;
-      if (cell && !cell.cleared && !cell.pending) {
+      if (!cell || cell.cleared || cell.pending) {
+        continue;
+      }
+
+      const key = this.cellKey(cell);
+      if (this.reservedTargetKeys.has(key) && key !== allowedReservedKey) {
+        continue;
+      }
+
+      if (cell) {
         return cell;
       }
     }
@@ -973,6 +958,34 @@ export class GameScene extends Phaser.Scene {
     g.strokeCircle(x, y, radius * 0.28);
   }
 
+  private isResolvingActive(active: ResolvingShooter): boolean {
+    return this.resolvingShooters.includes(active);
+  }
+
+  private cellKey(cell: BoardCell): string {
+    return `${cell.row}:${cell.col}`;
+  }
+
+  private reserveTarget(active: ResolvingShooter, cell: BoardCell): void {
+    const nextKey = this.cellKey(cell);
+    if (active.targetKey === nextKey) {
+      return;
+    }
+
+    this.releaseReservedTarget(active);
+    active.targetKey = nextKey;
+    this.reservedTargetKeys.add(nextKey);
+  }
+
+  private releaseReservedTarget(active: ResolvingShooter): void {
+    if (!active.targetKey) {
+      return;
+    }
+
+    this.reservedTargetKeys.delete(active.targetKey);
+    active.targetKey = undefined;
+  }
+
   private positionOnTrack(distance: number): TrackPosition {
     const [bottomRight, rightUp, topLeft, leftDown] = this.track.segments;
 
@@ -1065,7 +1078,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateDebugState(): void {
-    window.__RPIXEL_ACTIVE_PIGS__ = this.resolvingShooter ? 1 : 0;
+    window.__RPIXEL_ACTIVE_PIGS__ = this.resolvingShooters.length;
     window.__RPIXEL_BLOCKS_LEFT__ = this.totalCells - this.clearedCells;
     window.__RPIXEL_SLOTS_FILLED__ = this.slots.filter(Boolean).length;
     window.__RPIXEL_STUCK_SLOTS__ = this.slots.filter((slot) => slot?.status === 'stuck').length;
