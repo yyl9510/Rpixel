@@ -62,6 +62,7 @@ test('loads the menu and launches shooters through the waiting area', async ({ p
 
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.8);
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'game');
+  expect(await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL__)).toBe('0-5');
   await page.waitForFunction(() => (window.__RPIXEL_RESERVE_LEFT__ ?? 0) > 0);
   await page.waitForFunction(() => (window.__RPIXEL_LOCKED_RESERVE__ ?? 0) > 0);
 
@@ -83,6 +84,7 @@ test('loads the menu and launches shooters through the waiting area', async ({ p
 
   await clickGame(page, box, nonMatching.x, nonMatching.y);
   await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 1, undefined, { timeout: 10_000 });
+  expect(await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL__)).toBe('1-5');
   await page.waitForFunction(
     () => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 0 && (window.__RPIXEL_VISIBLE_WAITING__ ?? []).some((item) => item.status === 'stuck'),
     undefined,
@@ -97,6 +99,7 @@ test('loads the menu and launches shooters through the waiting area', async ({ p
   await page.waitForTimeout(100);
   await clickGame(page, box, waiting.x, waiting.y);
   await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 1 && (window.__RPIXEL_SLOTS_FILLED__ ?? 0) === 0, undefined, { timeout: 10_000 });
+  expect(await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL__)).toBe('1-5');
 });
 
 test('can run multiple shooters on the track at once', async ({ page }) => {
@@ -122,6 +125,7 @@ test('can run multiple shooters on the track at once', async ({ page }) => {
   }
 
   await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 5, undefined, { timeout: 10_000 });
+  expect(await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL__)).toBe('5-5');
   const ignored = (await visibleReserve(page)).find((item) => !item.locked);
   if (ignored) {
     await clickGame(page, box, ignored.x, ignored.y);
@@ -136,6 +140,47 @@ test('can run multiple shooters on the track at once', async ({ page }) => {
 
   const active = await page.evaluate(() => window.__RPIXEL_ACTIVE_PIGS__ ?? 0);
   expect(active).toBe(5);
+});
+
+test('keeps waiting slots left-packed when any waiting shooter launches', async ({ page }) => {
+  await page.reload();
+  await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'menu');
+
+  const { box } = await gameBox(page);
+  if (!box) {
+    return;
+  }
+
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.8);
+  await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'game');
+
+  for (let count = 0; count < 3; count += 1) {
+    const exposed = new Set(await page.evaluate(() => window.__RPIXEL_EXPOSED_COLORS__ ?? []));
+    const candidate = (await visibleReserve(page)).find((item) => !item.locked && !exposed.has(item.color));
+    expect(candidate).toBeTruthy();
+    if (!candidate) {
+      return;
+    }
+    await clickGame(page, box, candidate.x, candidate.y);
+    await page.waitForTimeout(80);
+  }
+
+  await page.waitForFunction(
+    () => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 0 && (window.__RPIXEL_VISIBLE_WAITING__ ?? []).filter((item) => item.status === 'stuck').length === 3,
+    undefined,
+    { timeout: 14_000 },
+  );
+  const before = (await visibleWaiting(page)).filter((item) => item.status === 'stuck').sort((a, b) => a.index - b.index);
+  expect(before.map((item) => item.index)).toEqual([0, 1, 2]);
+
+  await page.waitForTimeout(100);
+  await clickGame(page, box, before[1].x, before[1].y);
+  await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 1, undefined, { timeout: 10_000 });
+  await page.waitForTimeout(250);
+
+  const after = (await visibleWaiting(page)).filter((item) => item.status === 'stuck').sort((a, b) => a.index - b.index);
+  expect(after.map((item) => item.index)).toEqual([0, 1]);
+  expect(after.map((item) => item.id)).toEqual([before[0].id, before[2].id]);
 });
 
 test('advances only the clicked reserve column and fires one shot per track step', async ({ page }) => {
@@ -269,6 +314,9 @@ test('can complete the level, unlock treasure, and show the win panel', async ({
       reserveCandidates[0] ??
       waitingCandidates[0];
     if (!chosen) {
+      if ((state.reserve.length === 0 && state.waiting.length === 0) || (state.active ?? 0) + (state.slots ?? 0) > 0) {
+        continue;
+      }
       expect((state.active ?? 0) + (state.slots ?? 0)).toBeGreaterThan(0);
       continue;
     }

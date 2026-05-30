@@ -11,6 +11,7 @@ declare global {
     __RPIXEL_BLOCKS_LEFT__?: number;
     __RPIXEL_SLOTS_FILLED__?: number;
     __RPIXEL_STUCK_SLOTS__?: number;
+    __RPIXEL_CAPACITY_LABEL__?: string;
     __RPIXEL_RESERVE_LEFT__?: number;
     __RPIXEL_LOCKED_RESERVE__?: number;
     __RPIXEL_TREASURE_UNLOCKED__?: boolean;
