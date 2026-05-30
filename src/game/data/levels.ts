@@ -107,7 +107,7 @@ function buildBalancedPigs(board: PixelCellColor[][]): Pig[] {
     ['purple', purpleE],
   ];
 
-  queue.forEach(([color, ammo], index) => addPig(color, ammo, index >= 3));
+  queue.forEach(([color, ammo]) => addPig(color, ammo));
 
   return pigs;
 }
