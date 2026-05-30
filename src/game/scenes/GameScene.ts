@@ -103,6 +103,7 @@ export class GameScene extends Phaser.Scene {
   private slotChromeLayer?: Phaser.GameObjects.Container;
   private reserveLayer?: Phaser.GameObjects.Container;
   private blocksLeftText?: Phaser.GameObjects.Text;
+  private activeCapacityText?: Phaser.GameObjects.Text;
   private coinText?: Phaser.GameObjects.Text;
   private progressFill?: Phaser.GameObjects.Graphics;
   private treasure?: TreasureState;
@@ -302,7 +303,8 @@ export class GameScene extends Phaser.Scene {
     for (let line = 0; line < 8; line += 1) {
       this.slotChromeLayer.add(this.add.rectangle(44, this.track.bottom - 134 + line * 18, 100, 7, 0xffffff, 0.8).setStrokeStyle(1, 0x9aa7c8, 0.6));
     }
-    this.slotChromeLayer.add(this.add.text(58, this.track.bottom + 30, '5/5', this.textStyle(48)).setOrigin(0.5, 0).setStroke('#050915', 10));
+    this.activeCapacityText = this.add.text(58, this.track.bottom + 30, `0-${SLOT_CAPACITY}`, this.textStyle(44)).setOrigin(0.5, 0).setStroke('#050915', 10);
+    this.slotChromeLayer.add(this.activeCapacityText);
 
     for (let index = 0; index < SLOT_CAPACITY; index += 1) {
       const position = this.slotPosition(index);
@@ -440,6 +442,7 @@ export class GameScene extends Phaser.Scene {
     this.slots[slot.slotIndex] = null;
     this.clearPigTokenClick(slot.container);
     this.launchShooter(slot.pig, slot.container, slot.body, slot.ammoText);
+    this.compactWaitingSlots();
     this.updateDebugState();
   }
 
@@ -537,6 +540,7 @@ export class GameScene extends Phaser.Scene {
     active.pendingShots += 1;
     active.pig.ammo -= 1;
     active.ammoText.setText(String(active.pig.ammo));
+    const exhausted = active.pig.ammo <= 0;
     this.shotLog.push({
       pigId: active.pig.id,
       color: active.pig.color,
@@ -572,6 +576,11 @@ export class GameScene extends Phaser.Scene {
         onComplete();
       },
     });
+
+    if (exhausted) {
+      active.orbiting = false;
+      this.finishResolvingShooter(active);
+    }
   }
 
   private clearCell(cell: BoardCell): void {
@@ -733,6 +742,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    this.compactWaitingSlots();
     const slotIndex = this.slots.findIndex((slot) => slot === null);
     if (slotIndex === -1) {
       this.showResult(false, 'WAITING FULL');
@@ -771,6 +781,29 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.updateDebugState();
+  }
+
+  private compactWaitingSlots(): void {
+    const packed = this.slots.filter((slot): slot is SlotShooter => Boolean(slot));
+    this.slots = Array.from({ length: SLOT_CAPACITY }, (_, index) => packed[index] ?? null);
+
+    packed.forEach((slot, index) => {
+      slot.slotIndex = index;
+      const position = this.slotPosition(index);
+      if (slot.status === 'stuck') {
+        this.bindPigTokenClick(slot.container, 0.72, () => this.handleSlotClick(slot.slotIndex));
+      }
+      if (Math.abs(slot.container.x - position.x) < 0.5 && Math.abs(slot.container.y - position.y) < 0.5) {
+        return;
+      }
+      this.tweens.add({
+        targets: slot.container,
+        x: position.x,
+        y: position.y,
+        duration: 150,
+        ease: 'Quad.easeOut',
+      });
+    });
   }
 
   private findEdgeTarget(color: PigColor): EdgeTarget | null {
@@ -1177,6 +1210,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateDebugState(): void {
+    const activeCapacityLabel = `${this.resolvingShooters.length}-${SLOT_CAPACITY}`;
+    this.activeCapacityText?.setText(activeCapacityLabel);
+    window.__RPIXEL_CAPACITY_LABEL__ = activeCapacityLabel;
     window.__RPIXEL_ACTIVE_PIGS__ = this.resolvingShooters.length;
     window.__RPIXEL_BLOCKS_LEFT__ = this.totalCells - this.clearedCells;
     window.__RPIXEL_SLOTS_FILLED__ = this.slots.filter(Boolean).length;
