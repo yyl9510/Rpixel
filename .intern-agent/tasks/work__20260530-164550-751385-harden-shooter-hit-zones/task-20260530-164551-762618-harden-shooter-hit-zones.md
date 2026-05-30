@@ -44,3 +44,4 @@ User still reports shooters are hard or impossible to click. Replace fragile con
 ## Steps
 - 2026-05-30T16:45:51Z: task created
 - 2026-05-30T16:49:42Z: Add explicit shooter hit zones
+  - pushed_commit: d66da05
