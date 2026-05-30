@@ -14,6 +14,7 @@ const SLOT_Y = 1360;
 const RESERVE_VISIBLE = 9;
 const RESERVE_COLS = 3;
 const TRACK_SPEED = 820;
+const MANUAL_LAUNCH_HIT_RADIUS = 108;
 
 type Side = 'bottom' | 'right' | 'top' | 'left';
 type SlotStatus = 'entering' | 'stuck' | 'activating';
@@ -80,6 +81,8 @@ interface SlotShooter {
   ammoText: Phaser.GameObjects.Text;
 }
 
+type ManualLaunchTarget = { type: 'reserve'; index: number } | { type: 'waiting'; index: number };
+
 interface ResolvingShooter {
   pig: Pig;
   container: Phaser.GameObjects.Container;
@@ -110,6 +113,7 @@ export class GameScene extends Phaser.Scene {
   private coins = 10100;
   private totalCells = 0;
   private clearedCells = 0;
+  private lastDirectPigPointerStamp = -1;
   private shotLog: Array<{ pigId: string; color: PigColor; side: Side; lineIndex: number; cell: string; distance: number }> = [];
   private gameOver = false;
 
@@ -151,6 +155,7 @@ export class GameScene extends Phaser.Scene {
     this.reserveLayer = this.add.container(0, 0).setDepth(12);
     this.renderReserve();
     this.drawBoosterBar();
+    this.bindManualLaunchFallback();
     this.updateDebugState();
   }
 
@@ -434,10 +439,11 @@ export class GameScene extends Phaser.Scene {
 
   private handleSlotClick(slotIndex: number): void {
     const slot = this.slots[slotIndex];
-    if (this.gameOver || !slot || slot.status !== 'stuck' || this.resolvingShooters.length >= SLOT_CAPACITY) {
+    if (this.gameOver || !slot || slot.status === 'activating' || this.resolvingShooters.length >= SLOT_CAPACITY) {
       return;
     }
 
+    this.tweens.killTweensOf(slot.container);
     slot.status = 'activating';
     this.slots[slot.slotIndex] = null;
     this.clearPigTokenClick(slot.container);
@@ -979,7 +985,8 @@ export class GameScene extends Phaser.Scene {
     this.clearPigTokenClick(container);
     container.setSize(158, 158);
     container.setInteractive(new Phaser.Geom.Rectangle(-79, -79, 158, 158), Phaser.Geom.Rectangle.Contains);
-    container.on('pointerdown', () => {
+    container.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.lastDirectPigPointerStamp = this.pointerEventStamp(pointer);
       this.tweens.add({ targets: container, scale: scale * 0.9, duration: 65, yoyo: true });
       onClick();
     });
@@ -988,6 +995,133 @@ export class GameScene extends Phaser.Scene {
   private clearPigTokenClick(container: Phaser.GameObjects.Container): void {
     container.removeAllListeners('pointerdown');
     container.disableInteractive();
+  }
+
+  private bindManualLaunchFallback(): void {
+    const fallbackZone = this.add.zone(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT).setDepth(-100).setInteractive({ useHandCursor: false });
+    fallbackZone.on('pointerdown', this.handleManualLaunchPointer, this);
+    this.input.on('pointerdown', this.handleManualLaunchPointer, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      fallbackZone.off('pointerdown', this.handleManualLaunchPointer, this);
+      fallbackZone.destroy();
+      this.input.off('pointerdown', this.handleManualLaunchPointer, this);
+    });
+  }
+
+  private handleManualLaunchPointer(pointer: Phaser.Input.Pointer): void {
+    if (this.gameOver || this.resolvingShooters.length >= SLOT_CAPACITY) {
+      return;
+    }
+
+    const point = this.pointerGamePoint(pointer);
+    const target = this.findManualLaunchTarget(point.x, point.y);
+    if (!target) {
+      return;
+    }
+
+    const pointerStamp = this.pointerEventStamp(pointer);
+    const before = this.manualLaunchStateSignature();
+    this.time.delayedCall(0, () => {
+      if (
+        this.gameOver ||
+        this.resolvingShooters.length >= SLOT_CAPACITY ||
+        this.lastDirectPigPointerStamp === pointerStamp ||
+        this.manualLaunchStateSignature() !== before
+      ) {
+        return;
+      }
+
+      if (target.type === 'waiting') {
+        this.handleSlotClick(target.index);
+        return;
+      }
+
+      this.handleReserveClick(target.index);
+    });
+  }
+
+  private pointerGamePoint(pointer: Phaser.Input.Pointer): { x: number; y: number } {
+    const event = pointer.event as
+      | (Event & { clientX?: number; clientY?: number; changedTouches?: ArrayLike<{ clientX: number; clientY: number }> })
+      | undefined;
+    const touch = event?.changedTouches?.[0];
+    const clientX = typeof event?.clientX === 'number' ? event.clientX : touch?.clientX;
+    const clientY = typeof event?.clientY === 'number' ? event.clientY : touch?.clientY;
+
+    if (typeof clientX === 'number' && typeof clientY === 'number') {
+      const bounds = this.game.canvas.getBoundingClientRect();
+      if (bounds.width > 0 && bounds.height > 0) {
+        return {
+          x: ((clientX - bounds.left) / bounds.width) * GAME_WIDTH,
+          y: ((clientY - bounds.top) / bounds.height) * GAME_HEIGHT,
+        };
+      }
+    }
+
+    const worldX = Number.isFinite(pointer.worldX) ? pointer.worldX : pointer.x;
+    const worldY = Number.isFinite(pointer.worldY) ? pointer.worldY : pointer.y;
+    return { x: worldX, y: worldY };
+  }
+
+  private pointerEventStamp(pointer: Phaser.Input.Pointer): number {
+    const event = pointer.event as Event | undefined;
+    return typeof event?.timeStamp === 'number' ? event.timeStamp : pointer.downTime;
+  }
+
+  private findManualLaunchTarget(x: number, y: number): ManualLaunchTarget | null {
+    const waitingTarget = this.nearestWaitingSlotAt(x, y);
+    if (waitingTarget !== null) {
+      return { type: 'waiting', index: waitingTarget };
+    }
+
+    const reserveTarget = this.nearestTopReserveAt(x, y);
+    return reserveTarget === null ? null : { type: 'reserve', index: reserveTarget };
+  }
+
+  private nearestWaitingSlotAt(x: number, y: number): number | null {
+    return this.nearestLaunchPoint(
+      this.slots.flatMap((slot, index) => {
+        if (!slot || slot.status === 'activating') {
+          return [];
+        }
+        return [{ index, ...this.slotPosition(index) }];
+      }),
+      x,
+      y,
+    );
+  }
+
+  private nearestTopReserveAt(x: number, y: number): number | null {
+    return this.nearestLaunchPoint(
+      this.visibleReserveEntries().flatMap((entry) => {
+        if (this.isReserveLocked(entry) || entry.row !== 0) {
+          return [];
+        }
+        return [{ index: entry.index, ...this.reservePosition(entry.index) }];
+      }),
+      x,
+      y,
+    );
+  }
+
+  private nearestLaunchPoint(points: Array<{ index: number; x: number; y: number }>, x: number, y: number): number | null {
+    let closestIndex: number | null = null;
+    let closestDistance = Number.POSITIVE_INFINITY;
+    for (const point of points) {
+      const distance = Phaser.Math.Distance.Between(x, y, point.x, point.y);
+      if (distance > MANUAL_LAUNCH_HIT_RADIUS || distance >= closestDistance) {
+        continue;
+      }
+      closestIndex = point.index;
+      closestDistance = distance;
+    }
+    return closestIndex;
+  }
+
+  private manualLaunchStateSignature(): string {
+    const waiting = this.slots.map((slot) => (slot ? `${slot.slotIndex}:${slot.status}:${slot.pig.id}:${slot.pig.ammo}` : '-')).join('|');
+    const reserve = this.reserveColumns.map((column) => column.map((pig) => `${pig.id}:${pig.ammo}`).join(',')).join('|');
+    return `${this.resolvingShooters.length}/${waiting}/${reserve}`;
   }
 
   private makeMysteryToken(): Phaser.GameObjects.Container {

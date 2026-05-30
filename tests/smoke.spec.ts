@@ -87,7 +87,7 @@ test('loads the menu and launches shooters through the waiting area', async ({ p
     return;
   }
 
-  await clickGame(page, box, nonMatching.x, nonMatching.y);
+  await clickGame(page, box, nonMatching.x + 84, nonMatching.y + 8);
   await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 1, undefined, { timeout: 10_000 });
   expect(await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL__)).toBe('1-5');
   await page.waitForFunction(
@@ -102,7 +102,7 @@ test('loads the menu and launches shooters through the waiting area', async ({ p
     return;
   }
   await page.waitForTimeout(100);
-  await clickGame(page, box, waiting.x, waiting.y);
+  await clickGame(page, box, waiting.x + 84, waiting.y + 8);
   await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 1 && (window.__RPIXEL_SLOTS_FILLED__ ?? 0) === 0, undefined, { timeout: 10_000 });
   expect(await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL__)).toBe('1-5');
 });
