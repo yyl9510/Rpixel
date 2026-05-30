@@ -85,16 +85,29 @@ function buildBalancedPigs(board: PixelCellColor[][]): Pig[] {
 
   const [greenFirst = 0, greenSecond = 0] = splitAmmo(totals.green, 2);
   const [blueFirst = 0, blueSecond = 0] = splitAmmo(totals.blue, 2);
+  const [whiteFirst = 0, whiteSecond = 0] = splitAmmo(totals.white, 2);
+  const [redFirst = 0, redSecond = 0] = splitAmmo(totals.red, 2);
+  const [purpleA = 0, purpleB = 0, purpleC = 0, purpleD = 0, purpleE = 0] = splitAmmo(totals.purple, 5);
 
-  addPig('green', greenFirst);
-  addPig('blue', blueFirst);
-  addPig('white', totals.white);
-  splitAmmo(totals.purple, 5).forEach((ammo) => addPig('purple', ammo));
-  addPig('red', totals.red, true);
-  addPig('orange', totals.orange, true);
-  addPig('yellow', totals.yellow, true);
-  addPig('blue', blueSecond, true);
-  addPig('green', greenSecond, true);
+  const queue: Array<[PigColor, number]> = [
+    ['white', whiteFirst],
+    ['purple', purpleA],
+    ['green', greenFirst],
+    ['red', redFirst],
+    ['red', redSecond],
+    ['blue', blueFirst],
+    ['purple', purpleB],
+    ['white', whiteSecond],
+    ['purple', purpleC],
+    ['orange', totals.orange],
+    ['yellow', totals.yellow],
+    ['purple', purpleD],
+    ['blue', blueSecond],
+    ['green', greenSecond],
+    ['purple', purpleE],
+  ];
+
+  queue.forEach(([color, ammo], index) => addPig(color, ammo, index >= 3));
 
   return pigs;
 }
