@@ -189,6 +189,64 @@ test('keeps waiting slots left-packed when any waiting shooter launches', async 
   expect(after.map((item) => item.id)).toEqual([before[0].id, before[2].id]);
 });
 
+test('edge hit zones launch all first-row reserve columns and every waiting slot', async ({ page }) => {
+  await page.reload();
+  await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'menu');
+
+  const { box } = await gameBox(page);
+  if (!box) {
+    return;
+  }
+
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.8);
+  await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'game');
+
+  const initialTop = (await visibleReserve(page)).filter((item) => !item.locked).sort((a, b) => a.col - b.col);
+  expect(initialTop).toHaveLength(3);
+  for (const shooter of initialTop) {
+    await clickGame(page, box, shooter.x + 96, shooter.y + 12);
+    await page.waitForTimeout(120);
+  }
+  await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 3, undefined, { timeout: 10_000 });
+  const afterTop = await visibleReserve(page);
+  initialTop.forEach((shooter) => {
+    expect(afterTop.find((entry) => entry.col === shooter.col && entry.row === 0)?.id).not.toBe(shooter.id);
+  });
+
+  await page.waitForFunction(
+    () => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 0 && (window.__RPIXEL_VISIBLE_WAITING__ ?? []).filter((item) => item.status === 'stuck').length >= 3,
+    undefined,
+    { timeout: 14_000 },
+  );
+
+  for (let count = 0; count < 2; count += 1) {
+    const exposed = new Set(await page.evaluate(() => window.__RPIXEL_EXPOSED_COLORS__ ?? []));
+    const candidate = (await visibleReserve(page)).find((item) => !item.locked && !exposed.has(item.color));
+    expect(candidate).toBeTruthy();
+    if (!candidate) {
+      return;
+    }
+    await clickGame(page, box, candidate.x + 96, candidate.y + 12);
+    await page.waitForTimeout(120);
+  }
+
+  await page.waitForFunction(
+    () => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 0 && (window.__RPIXEL_VISIBLE_WAITING__ ?? []).filter((item) => item.status === 'stuck').length === 5,
+    undefined,
+    { timeout: 14_000 },
+  );
+  const waiting = (await visibleWaiting(page)).filter((item) => item.status === 'stuck').sort((a, b) => b.index - a.index);
+  expect(waiting.map((item) => item.index)).toEqual([4, 3, 2, 1, 0]);
+
+  for (const shooter of waiting) {
+    await clickGame(page, box, shooter.x + 78, shooter.y + 12);
+    await page.waitForTimeout(120);
+  }
+
+  await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 5 && (window.__RPIXEL_SLOTS_FILLED__ ?? 0) === 0, undefined, { timeout: 10_000 });
+  expect(await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL__)).toBe('5-5');
+});
+
 test('advances only the clicked reserve column and fires one shot per track step', async ({ page }) => {
   await page.reload();
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'menu');
