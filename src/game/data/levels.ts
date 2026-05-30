@@ -1,4 +1,4 @@
-import type { LevelDefinition, Pig, PixelCellColor } from '../types';
+import { PIG_COLORS, type LevelDefinition, type Pig, type PigColor, type PixelCellColor } from '../types';
 
 const ROWS = 21;
 const COLS = 17;
@@ -47,29 +47,59 @@ function makeReferenceGrid(): PixelCellColor[][] {
 
 const grid = makeReferenceGrid();
 
-const pigs: Pig[] = [
-  { id: 'pig-1', color: 'green', ammo: 50 },
-  { id: 'pig-2', color: 'blue', ammo: 80 },
-  { id: 'pig-3', color: 'white', ammo: 40 },
-  { id: 'pig-4', color: 'purple', ammo: 12 },
-  { id: 'pig-5', color: 'purple', ammo: 12 },
-  { id: 'pig-6', color: 'purple', ammo: 12 },
-  { id: 'pig-7', color: 'purple', ammo: 12 },
-  { id: 'pig-8', color: 'purple', ammo: 12 },
-  { id: 'pig-9', color: 'red', ammo: 35, mystery: true },
-  { id: 'pig-10', color: 'orange', ammo: 55, mystery: true },
-  { id: 'pig-11', color: 'yellow', ammo: 55, mystery: true },
-  { id: 'pig-12', color: 'blue', ammo: 90, mystery: true },
-  { id: 'pig-13', color: 'green', ammo: 45, mystery: true },
-  { id: 'pig-14', color: 'white', ammo: 45, mystery: true },
-  { id: 'pig-15', color: 'red', ammo: 35, mystery: true },
-  { id: 'pig-16', color: 'orange', ammo: 45, mystery: true },
-  { id: 'pig-17', color: 'yellow', ammo: 45, mystery: true },
-  { id: 'pig-18', color: 'blue', ammo: 90, mystery: true },
-  { id: 'pig-19', color: 'green', ammo: 45, mystery: true },
-  { id: 'pig-20', color: 'white', ammo: 35, mystery: true },
-  { id: 'pig-21', color: 'purple', ammo: 30, mystery: true },
-];
+function emptyColorTotals(): Record<PigColor, number> {
+  return PIG_COLORS.reduce(
+    (totals, color) => ({ ...totals, [color]: 0 }),
+    {} as Record<PigColor, number>,
+  );
+}
+
+function countGridColors(board: PixelCellColor[][]): Record<PigColor, number> {
+  const totals = emptyColorTotals();
+  board.flat().forEach((color) => {
+    if (color !== null) {
+      totals[color] += 1;
+    }
+  });
+  return totals;
+}
+
+function splitAmmo(total: number, parts: number): number[] {
+  const safeParts = Math.max(1, Math.min(parts, total));
+  const base = Math.floor(total / safeParts);
+  const remainder = total % safeParts;
+  return Array.from({ length: safeParts }, (_, index) => base + (index < remainder ? 1 : 0));
+}
+
+function buildBalancedPigs(board: PixelCellColor[][]): Pig[] {
+  const totals = countGridColors(board);
+  let nextId = 1;
+  const pigs: Pig[] = [];
+  const addPig = (color: PigColor, ammo: number, mystery = false): void => {
+    if (ammo <= 0) {
+      return;
+    }
+    pigs.push({ id: `pig-${nextId}`, color, ammo, mystery });
+    nextId += 1;
+  };
+
+  const [greenFirst = 0, greenSecond = 0] = splitAmmo(totals.green, 2);
+  const [blueFirst = 0, blueSecond = 0] = splitAmmo(totals.blue, 2);
+
+  addPig('green', greenFirst);
+  addPig('blue', blueFirst);
+  addPig('white', totals.white);
+  splitAmmo(totals.purple, 5).forEach((ammo) => addPig('purple', ammo));
+  addPig('red', totals.red, true);
+  addPig('orange', totals.orange, true);
+  addPig('yellow', totals.yellow, true);
+  addPig('blue', blueSecond, true);
+  addPig('green', greenSecond, true);
+
+  return pigs;
+}
+
+const pigs = buildBalancedPigs(grid);
 
 export const LEVELS: LevelDefinition[] = [
   {
