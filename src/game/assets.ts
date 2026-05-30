@@ -10,20 +10,25 @@ interface ColorStyle {
 
 export const COLOR_STYLES: Record<PigColor, ColorStyle> = {
   red: { base: 0xf43f5e, dark: 0x9f1239, light: 0xff8fab, text: 'R' },
-  blue: { base: 0x2f80ed, dark: 0x1559a8, light: 0x91c9ff, text: 'B' },
+  blue: { base: 0x15c8f4, dark: 0x0c71b8, light: 0xa2f4ff, text: 'B' },
   yellow: { base: 0xffcf3f, dark: 0xd98b00, light: 0xfff1a6, text: 'Y' },
   green: { base: 0x35c95f, dark: 0x16863a, light: 0x9cf2b2, text: 'G' },
   purple: { base: 0x9b5cff, dark: 0x6034ba, light: 0xd2b6ff, text: 'P' },
+  orange: { base: 0xff8a22, dark: 0xb94b00, light: 0xffc36b, text: 'O' },
+  white: { base: 0xf7fbff, dark: 0xa5b3c8, light: 0xffffff, text: 'W' },
 };
 
 export function createGeneratedAssets(scene: Phaser.Scene): void {
-  if (scene.textures.exists('pig-red')) {
-    return;
-  }
-
   for (const [color, style] of Object.entries(COLOR_STYLES) as [PigColor, ColorStyle][]) {
-    createBlockTexture(scene, color, style);
-    createPigTexture(scene, color, style);
+    if (!scene.textures.exists(`block-${color}`)) {
+      createBlockTexture(scene, color, style);
+    }
+    if (!scene.textures.exists(`pig-${color}`)) {
+      createPigTexture(scene, color, style);
+    }
+    if (!scene.textures.exists(`shooter-${color}`)) {
+      createShooterTexture(scene, color, style);
+    }
   }
 }
 
@@ -113,5 +118,56 @@ function createPigTexture(scene: Phaser.Scene, color: PigColor, style: ColorStyl
   g.fillRoundedRect(44, 124, 22, 18, 9);
   g.fillRoundedRect(98, 124, 22, 18, 9);
   g.generateTexture(`pig-${color}`, 164, 154);
+  g.destroy();
+}
+
+function createShooterTexture(scene: Phaser.Scene, color: PigColor, style: ColorStyle): void {
+  const g = scene.add.graphics();
+  g.fillStyle(0x050915, 0.36);
+  g.fillEllipse(82, 124, 132, 42);
+
+  g.lineStyle(7, 0x050915, 1);
+  g.fillStyle(style.dark, 1);
+  g.fillCircle(27, 78, 20);
+  g.strokeCircle(27, 78, 20);
+  g.fillCircle(137, 78, 20);
+  g.strokeCircle(137, 78, 20);
+
+  g.fillStyle(style.dark, 1);
+  g.fillRoundedRect(22, 30, 120, 112, 34);
+  g.strokeRoundedRect(22, 30, 120, 112, 34);
+  g.fillStyle(style.base, 1);
+  g.fillRoundedRect(31, 22, 102, 112, 34);
+  g.strokeRoundedRect(31, 22, 102, 112, 34);
+  g.fillStyle(style.light, 0.5);
+  g.fillRoundedRect(43, 32, 62, 22, 11);
+  g.fillStyle(0xffffff, 0.18);
+  g.fillRoundedRect(48, 62, 68, 12, 6);
+
+  g.lineStyle(7, style.dark, 0.95);
+  g.lineBetween(61, 52, 61, 116);
+  g.lineBetween(103, 52, 103, 116);
+  g.lineStyle(4, 0xffffff, 0.42);
+  g.lineBetween(70, 48, 94, 48);
+  g.lineBetween(70, 62, 94, 62);
+
+  g.fillStyle(0xffd86b, 1);
+  g.fillRoundedRect(56, 12, 52, 24, 12);
+  g.lineStyle(5, 0x8a4c00, 1);
+  g.strokeRoundedRect(56, 12, 52, 24, 12);
+  g.fillStyle(0xfff1a6, 0.72);
+  g.fillRoundedRect(64, 16, 26, 7, 4);
+
+  g.lineStyle(7, 0x050915, 1);
+  g.fillStyle(0xf7fbff, 0.94);
+  g.fillCircle(82, 118, 12);
+  g.strokeCircle(82, 118, 12);
+  g.lineStyle(4, 0x050915, 1);
+  g.lineBetween(74, 124, 90, 124);
+
+  g.fillStyle(style.dark, 1);
+  g.fillRoundedRect(44, 132, 22, 18, 9);
+  g.fillRoundedRect(98, 132, 22, 18, 9);
+  g.generateTexture(`shooter-${color}`, 164, 162);
   g.destroy();
 }

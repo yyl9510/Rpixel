@@ -65,7 +65,7 @@ export class MenuScene extends Phaser.Scene {
     this.add.text(853, 130, '+', this.textStyle(62)).setStroke('#9a5200', 8);
 
     this.add.circle(992, 166, 56, 0x22283d).setStrokeStyle(6, 0x050915);
-    this.add.text(970, 130, 'SET', this.textStyle(34)).setStroke('#050915', 8);
+    this.drawGearIcon(992, 166, 34, 0xdce7f4, 0x050915, 6);
     this.add.zone(992, 166, 120, 120).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.showSettingsPanel());
   }
 
@@ -244,6 +244,25 @@ export class MenuScene extends Phaser.Scene {
       panel.destroy();
     };
     panel.add(this.makePanelButton(0, 142, 'Close', 0xffc83d, close));
+  }
+
+  private drawGearIcon(x: number, y: number, radius: number, fill: number, stroke: number, strokeWidth: number): void {
+    const g = this.add.graphics();
+    g.fillStyle(fill, 1);
+    g.lineStyle(strokeWidth, stroke, 1);
+    for (let index = 0; index < 8; index += 1) {
+      const angle = (Math.PI * 2 * index) / 8;
+      const cx = x + Math.cos(angle) * radius * 0.76;
+      const cy = y + Math.sin(angle) * radius * 0.76;
+      g.fillRoundedRect(cx - 8, cy - 8, 16, 16, 4);
+      g.strokeRoundedRect(cx - 8, cy - 8, 16, 16, 4);
+    }
+    g.fillCircle(x, y, radius * 0.72);
+    g.strokeCircle(x, y, radius * 0.72);
+    g.fillStyle(0x536178, 1);
+    g.fillCircle(x, y, radius * 0.28);
+    g.lineStyle(Math.max(3, strokeWidth - 2), stroke, 1);
+    g.strokeCircle(x, y, radius * 0.28);
   }
 
   private addRoundRect(

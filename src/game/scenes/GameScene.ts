@@ -6,12 +6,13 @@ import type { Pig, PigColor } from '../types';
 const GAME_WIDTH = 1080;
 const GAME_HEIGHT = 1920;
 const SLOT_CAPACITY = 5;
-const BOARD_BOX_SIZE = 660;
-const BOARD_Y = 350;
-const TRACK_PAD = 92;
-const SLOT_Y = 1238;
-const RESERVE_VISIBLE = 14;
-const RESERVE_COLS = 7;
+const BOARD_BOX_WIDTH = 760;
+const BOARD_BOX_HEIGHT = 840;
+const BOARD_TOP = 270;
+const TRACK_PAD = 116;
+const SLOT_Y = 1360;
+const RESERVE_VISIBLE = 9;
+const RESERVE_COLS = 3;
 
 type Side = 'bottom' | 'right' | 'top' | 'left';
 type SlotStatus = 'entering' | 'stuck' | 'activating';
@@ -91,12 +92,12 @@ export class GameScene extends Phaser.Scene {
 
   private readonly rows = FIRST_LEVEL.grid.length;
   private readonly cols = Math.max(...FIRST_LEVEL.grid.map((row) => row.length));
-  private readonly cellSize = Math.floor(Math.min(BOARD_BOX_SIZE / this.cols, BOARD_BOX_SIZE / this.rows));
+  private readonly cellSize = Math.floor(Math.min(BOARD_BOX_WIDTH / this.cols, BOARD_BOX_HEIGHT / this.rows));
   private readonly boardWidth = this.cellSize * this.cols;
   private readonly boardHeight = this.cellSize * this.rows;
   private readonly boardX = (GAME_WIDTH - this.boardWidth) / 2;
-  private readonly boardY = BOARD_Y + (BOARD_BOX_SIZE - this.boardHeight) / 2;
-  private readonly center = { x: GAME_WIDTH / 2, y: BOARD_Y + BOARD_BOX_SIZE / 2 };
+  private readonly boardY = BOARD_TOP + (BOARD_BOX_HEIGHT - this.boardHeight) / 2;
+  private readonly center = { x: GAME_WIDTH / 2, y: BOARD_TOP + BOARD_BOX_HEIGHT / 2 };
   private readonly track: TrackMetrics = this.createTrackMetrics();
 
   constructor() {
@@ -120,17 +121,19 @@ export class GameScene extends Phaser.Scene {
     this.drawTrack();
     this.drawBoard();
     this.drawTreasure();
+    this.drawBoardForeground();
     this.drawSlotChrome();
 
     this.reserveLayer = this.add.container(0, 0).setDepth(12);
     this.renderReserve();
+    this.drawBoosterBar();
     this.updateDebugState();
   }
 
   private drawBackground(): void {
     const graphics = this.add.graphics();
-    const top = Phaser.Display.Color.ValueToColor(0x0739dd);
-    const bottom = Phaser.Display.Color.ValueToColor(0x12cdf3);
+    const top = Phaser.Display.Color.ValueToColor(0x3d3d62);
+    const bottom = Phaser.Display.Color.ValueToColor(0x323352);
 
     for (let y = 0; y < GAME_HEIGHT; y += 12) {
       const color = Phaser.Display.Color.Interpolate.ColorWithColor(top, bottom, GAME_HEIGHT, y);
@@ -138,38 +141,36 @@ export class GameScene extends Phaser.Scene {
       graphics.fillRect(0, y, GAME_WIDTH, 12);
     }
 
-    graphics.lineStyle(7, 0xffffff, 0.14);
-    for (let i = 0; i < 18; i += 1) {
-      const x = 80 + ((i * 247) % 920);
-      const y = 250 + i * 96;
+    graphics.lineStyle(7, 0xffffff, 0.05);
+    for (let i = 0; i < 24; i += 1) {
+      const x = 60 + ((i * 211) % 980);
+      const y = 220 + i * 72;
       if (i % 2 === 0) {
-        graphics.strokeCircle(x, y, 48);
-        graphics.strokeCircle(x - 16, y - 7, 8);
-        graphics.strokeCircle(x + 18, y - 7, 8);
+        graphics.strokeCircle(x, y, 40);
+        graphics.strokeCircle(x - 14, y - 6, 7);
+        graphics.strokeCircle(x + 16, y - 6, 7);
       } else {
-        graphics.strokeRoundedRect(x - 42, y - 34, 84, 68, 16);
+        graphics.strokeRoundedRect(x - 36, y - 28, 72, 56, 14);
       }
     }
   }
 
   private drawHud(): void {
-    this.addRoundRect(540, 86, 318, 74, 20, 0x0b1534, 0.62, 0x050915, 5);
-    this.add.text(540, 51, `Level ${FIRST_LEVEL.id}`, this.textStyle(40)).setOrigin(0.5, 0).setStroke('#06101f', 8);
-    this.addRoundRect(540, 146, 300, 28, 14, 0x071122, 0.7, 0xffffff, 3, 0.25);
+    this.add.circle(94, 82, 56, 0xe63942).setStrokeStyle(7, 0x050915);
+    this.drawGearIcon(94, 82, 36, 0xf2f5ff, 0x050915, 6, 7);
+    this.add.zone(94, 82, 128, 128).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.scene.start('MenuScene'));
+
+    this.addRoundRect(540, 82, 300, 86, 24, 0xe63a4b, 1, 0x050915, 7);
+    this.add.text(540, 50, `Level ${FIRST_LEVEL.id}`, this.textStyle(43)).setOrigin(0.5, 0).setStroke('#06101f', 9);
+
+    this.add.circle(744, 82, 42, 0xffc937).setStrokeStyle(6, 0x7a4a00);
+    this.add.circle(744, 82, 29, 0xffdd55, 0.72);
+    this.coinText = this.add.text(798, 50, this.formatCoins(this.coins), this.textStyle(43)).setStroke('#06101f', 9);
+    this.addRoundRect(968, 82, 84, 78, 18, 0xffb43d, 1, 0x6b3b00, 6);
+    this.add.text(943, 40, '+', this.textStyle(65)).setStroke('#9a5200', 8);
+
     this.progressFill = this.add.graphics().setDepth(4);
-
-    this.addRoundRect(78, 84, 94, 70, 18, 0xffc83d, 1, 0x050915, 5);
-    this.add.text(50, 50, '<', this.textStyle(46)).setStroke('#06101f', 8);
-    this.add.zone(78, 84, 110, 92).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.scene.start('MenuScene'));
-
-    this.addRoundRect(978, 84, 128, 70, 18, 0x39c66a, 1, 0x050915, 5);
-    this.add.text(935, 54, 'Retry', this.textStyle(32)).setStroke('#06101f', 7);
-    this.add.zone(978, 84, 148, 92).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.scene.restart());
-
-    this.add.circle(816, 84, 31, 0xffc937).setStrokeStyle(5, 0x7a4a00);
-    this.coinText = this.add.text(858, 55, this.formatCoins(this.coins), this.textStyle(31)).setStroke('#06101f', 7);
-
-    this.blocksLeftText = this.add.text(540, 283, '', this.textStyle(36)).setOrigin(0.5, 0).setStroke('#06101f', 8).setDepth(18);
+    this.blocksLeftText = this.add.text(540, 134, '', this.textStyle(18)).setOrigin(0.5, 0).setAlpha(0);
     this.updateProgressText();
   }
 
@@ -195,12 +196,14 @@ export class GameScene extends Phaser.Scene {
     const width = this.track.right - this.track.left;
     const height = this.track.bottom - this.track.top;
     const g = this.add.graphics().setDepth(3);
-    g.lineStyle(24, 0x051122, 0.5);
-    g.strokeRoundedRect(this.track.left, this.track.top, width, height, 38);
-    g.lineStyle(13, 0xffc51e, 1);
-    g.strokeRoundedRect(this.track.left, this.track.top, width, height, 38);
-    g.lineStyle(4, 0xfff19a, 0.9);
-    g.strokeRoundedRect(this.track.left + 7, this.track.top + 7, width - 14, height - 14, 30);
+    g.fillStyle(0x4a4b76, 1);
+    g.fillRoundedRect(this.track.left, this.track.top, width, height, 86);
+    g.lineStyle(10, 0x10162f, 0.95);
+    g.strokeRoundedRect(this.track.left, this.track.top, width, height, 86);
+    g.lineStyle(12, 0xbfd7ff, 0.78);
+    g.strokeRoundedRect(this.track.left + 10, this.track.top + 10, width - 20, height - 20, 76);
+    g.lineStyle(5, 0xffffff, 0.72);
+    g.strokeRoundedRect(this.track.left + 22, this.track.top + 22, width - 44, height - 44, 62);
     this.drawTrackArrows();
   }
 
@@ -213,16 +216,16 @@ export class GameScene extends Phaser.Scene {
         new Phaser.Math.Vector2(-18, 17).rotate(rotation).add(new Phaser.Math.Vector2(x, y)),
       ].map((point) => new Phaser.Geom.Point(point.x, point.y));
 
-      g.fillStyle(0xfff1a6, 0.95);
+      g.fillStyle(0xc7d2ff, 0.22);
       g.fillPoints(points, true);
-      g.lineStyle(4, 0x8a4c00, 0.85);
+      g.lineStyle(4, 0xdce7ff, 0.16);
       g.strokePoints(points, true);
     };
 
-    const horizontalInset = 146;
-    const verticalInset = 126;
-    for (let index = 0; index < 3; index += 1) {
-      const t = index / 2;
+    const horizontalInset = 150;
+    const verticalInset = 150;
+    for (let index = 0; index < 4; index += 1) {
+      const t = index / 3;
       drawArrow(Phaser.Math.Linear(this.track.startX - 48, this.track.right - horizontalInset, t), this.track.bottom, 0);
       drawArrow(this.track.right, Phaser.Math.Linear(this.track.bottom - verticalInset, this.track.top + verticalInset, t), -Math.PI / 2);
       drawArrow(Phaser.Math.Linear(this.track.right - horizontalInset, this.track.left + horizontalInset, t), this.track.top, Math.PI);
@@ -231,8 +234,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBoard(): void {
-    this.addRoundRect(this.center.x, this.center.y, BOARD_BOX_SIZE + 48, BOARD_BOX_SIZE + 48, 28, 0xf1fbff, 0.72, 0x050915, 8).setDepth(5);
-    this.addRoundRect(this.center.x, this.center.y, BOARD_BOX_SIZE + 12, BOARD_BOX_SIZE + 12, 18, 0x1241a5, 0.18, 0xffffff, 4, 0.55).setDepth(5);
+    this.addRoundRect(this.center.x, this.center.y, this.boardWidth + 46, this.boardHeight + 46, 22, 0x202746, 1, 0x0b1024, 8).setDepth(5);
+    this.addRoundRect(this.center.x, this.center.y, this.boardWidth + 18, this.boardHeight + 18, 14, 0x151b36, 1, 0xdce7ff, 4, 0.45).setDepth(6);
 
     this.cells = FIRST_LEVEL.grid.map((row, rowIndex) =>
       Array.from({ length: this.cols }, (_, colIndex) => {
@@ -246,7 +249,7 @@ export class GameScene extends Phaser.Scene {
           this.boardY + rowIndex * this.cellSize + this.cellSize / 2,
           `block-${color}`,
         );
-        image.setScale((this.cellSize * 1.03) / 128);
+        image.setScale((this.cellSize * 1.08) / 128);
         image.setDepth(9 + rowIndex + colIndex * 0.01);
 
         return {
@@ -261,13 +264,59 @@ export class GameScene extends Phaser.Scene {
     );
   }
 
+  private drawBoardForeground(): void {
+    const layer = this.add.container(0, 0).setDepth(32);
+    const floorTop = this.boardY + this.boardHeight - 126;
+    const floorBottom = this.boardY + this.boardHeight - 12;
+    const floorHeight = floorBottom - floorTop;
+    const left = this.boardX + 8;
+    const right = this.boardX + this.boardWidth - 8;
+    const width = right - left;
+
+    layer.add(this.add.rectangle(this.center.x, floorTop - 8, width + 10, 18, 0x050915, 0.18));
+    layer.add(this.makeRoundRect(width + 14, floorHeight + 20, 18, 0x17213e, 0.94, 0x050915, 5, 0.85, this.center.x, floorTop + floorHeight / 2));
+
+    const bayCount = 4;
+    const gap = 20;
+    const bayWidth = (width - gap * (bayCount + 1)) / bayCount;
+    for (let index = 0; index < bayCount; index += 1) {
+      const x = left + gap + bayWidth / 2 + index * (bayWidth + gap);
+      layer.add(this.makeRoundRect(bayWidth, 86, 12, 0xdff1ff, 0.92, 0xffffff, 3, 0.55, x, floorTop + 48));
+      layer.add(this.add.rectangle(x, floorTop + 76, bayWidth - 18, 34, 0x9db4e8, 0.34));
+      layer.add(this.add.rectangle(x - bayWidth / 2 - 10, floorTop + 50, 16, 118, 0x272d43).setStrokeStyle(4, 0x050915, 0.7));
+
+      const parked = this.add.image(x, floorTop + 51, 'shooter-blue').setScale(0.35).setAngle(index % 2 === 0 ? -12 : 10);
+      layer.add(parked);
+    }
+    layer.add(this.add.rectangle(right - 4, floorTop + 50, 16, 118, 0x272d43).setStrokeStyle(4, 0x050915, 0.7));
+
+    const pipeY = floorBottom - 18;
+    const pipe = this.add.graphics();
+    pipe.fillStyle(0xff7a18, 1);
+    pipe.lineStyle(7, 0x7a2e00, 1);
+    pipe.fillRoundedRect(left - 2, pipeY - 24, width + 4, 48, 14);
+    pipe.strokeRoundedRect(left - 2, pipeY - 24, width + 4, 48, 14);
+    pipe.fillStyle(0xff9b2f, 0.48);
+    for (let x = left + 10; x < right - 20; x += 36) {
+      pipe.fillRect(x, pipeY - 18, 18, 36);
+    }
+    layer.add(pipe);
+    layer.add(this.add.circle(left - 4, pipeY, 27, 0xff8a22).setStrokeStyle(7, 0x7a2e00));
+    layer.add(this.add.circle(right + 4, pipeY, 27, 0xff8a22).setStrokeStyle(7, 0x7a2e00));
+  }
+
   private drawSlotChrome(): void {
     this.slotChromeLayer = this.add.container(0, 0).setDepth(10);
-    this.slotChromeLayer.add(this.add.text(540, SLOT_Y - 134, 'Active Slots', this.textStyle(34)).setOrigin(0.5, 0).setStroke('#06101f', 7));
+    this.slotChromeLayer.add(this.makeRoundRect(88, 190, 20, 0xdee9ff, 0.8, 0x10162f, 5, 1, 44, this.track.bottom - 54));
+    for (let line = 0; line < 8; line += 1) {
+      this.slotChromeLayer.add(this.add.rectangle(44, this.track.bottom - 134 + line * 18, 100, 7, 0xffffff, 0.8).setStrokeStyle(1, 0x9aa7c8, 0.6));
+    }
+    this.slotChromeLayer.add(this.add.text(58, this.track.bottom + 30, '5/5', this.textStyle(48)).setOrigin(0.5, 0).setStroke('#050915', 10));
 
     for (let index = 0; index < SLOT_CAPACITY; index += 1) {
       const position = this.slotPosition(index);
-      this.slotChromeLayer.add(this.makeRoundRect(158, 166, 28, 0x0b1534, 0.5, 0xffffff, 5, 0.35, position.x, position.y));
+      this.slotChromeLayer.add(this.makeRoundRect(162, 158, 28, 0x2e3153, 1, 0x0c1024, 7, 1, position.x, position.y));
+      this.slotChromeLayer.add(this.makeRoundRect(136, 132, 22, 0x3a3d62, 1, 0x79839f, 4, 0.7, position.x, position.y));
     }
   }
 
@@ -277,19 +326,92 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.reserveLayer.removeAll(true);
-    this.reserveLayer.add(this.makeRoundRect(940, 366, 34, 0x0b1534, 0.5, 0x050915, 6, 1, 540, 1620));
-    this.reserveLayer.add(this.add.text(540, 1420, 'Reserve Pool', this.textStyle(34)).setOrigin(0.5, 0).setStroke('#06101f', 7));
+    this.reserveLayer.add(this.makeRoundRect(620, 430, 68, 0x2f3151, 0.32, undefined, 0, 1, 540, 1655));
 
     const visible = this.reserve.slice(0, RESERVE_VISIBLE);
     visible.forEach((pig, index) => {
       const position = this.reservePosition(index);
       const locked = this.isReserveLocked(pig, index);
-      const token = this.createPigToken(pig, position.x, position.y, 0.5, !locked, () => this.handleReserveClick(index), false, locked);
+      const token = this.createPigToken(pig, position.x, position.y, 0.74, !locked, () => this.handleReserveClick(index), false, locked);
       token.container.setAlpha(locked ? 0.74 : 1);
       this.reserveLayer?.add(token.container);
     });
+  }
 
-    this.reserveLayer.add(this.add.text(540, 1810, `${this.reserve.length} shooters`, this.textStyle(30)).setOrigin(0.5, 0).setStroke('#06101f', 7));
+  private drawBoosterBar(): void {
+    const layer = this.add.container(0, 0).setDepth(50);
+    layer.add(this.add.rectangle(540, 1846, GAME_WIDTH, 160, 0xef3f4a).setStrokeStyle(5, 0xbfd7ff));
+    const boosters = [
+      { x: 148, type: 'add', count: '17' },
+      { x: 392, type: 'tap', count: '44' },
+      { x: 636, type: 'refresh', count: '38' },
+      { x: 880, type: 'rocket', count: '8' },
+    ];
+    boosters.forEach((booster) => {
+      layer.add(this.add.circle(booster.x, 1780, 72, 0xe83f4b).setStrokeStyle(9, 0xbfd7ff));
+      layer.add(this.add.circle(booster.x, 1780, 54, 0xff7d82, 0.48));
+      this.drawBoosterIcon(layer, booster.x, 1780, booster.type);
+      layer.add(this.add.circle(booster.x + 70, 1852, 34, 0xd72031).setStrokeStyle(6, 0x7b0714));
+      layer.add(this.add.text(booster.x + 70, 1827, booster.count, this.textStyle(34)).setOrigin(0.5, 0).setStroke('#06101f', 7));
+    });
+  }
+
+  private drawBoosterIcon(layer: Phaser.GameObjects.Container, x: number, y: number, type: string): void {
+    if (type === 'add') {
+      layer.add(this.makeRoundRect(56, 70, 10, 0xffffff, 1, 0x050915, 5, 1, x - 8, y - 4));
+      layer.add(this.makeRoundRect(46, 58, 9, 0xf4f7ff, 1, 0x050915, 5, 1, x + 9, y + 4));
+      layer.add(this.add.rectangle(x + 9, y + 4, 34, 9, 0xe83f4b).setStrokeStyle(4, 0x050915));
+      layer.add(this.add.rectangle(x + 9, y + 4, 9, 34, 0xe83f4b).setStrokeStyle(4, 0x050915));
+      return;
+    }
+
+    if (type === 'tap') {
+      const g = this.add.graphics();
+      g.fillStyle(0xffffff, 1);
+      g.lineStyle(6, 0x050915, 1);
+      g.fillRoundedRect(x - 18, y - 48, 34, 92, 17);
+      g.strokeRoundedRect(x - 18, y - 48, 34, 92, 17);
+      g.fillRoundedRect(x - 2, y - 14, 52, 58, 18);
+      g.strokeRoundedRect(x - 2, y - 14, 52, 58, 18);
+      g.fillStyle(0xffd6dc, 1);
+      g.fillRoundedRect(x - 9, y - 39, 18, 70, 9);
+      g.lineStyle(4, 0x050915, 1);
+      g.lineBetween(x - 38, y - 48, x - 56, y - 68);
+      g.lineBetween(x - 56, y - 18, x - 80, y - 18);
+      layer.add(g);
+      return;
+    }
+
+    if (type === 'refresh') {
+      const g = this.add.graphics();
+      g.lineStyle(12, 0xffffff, 1);
+      g.beginPath();
+      g.arc(x - 2, y, 34, Phaser.Math.DegToRad(35), Phaser.Math.DegToRad(215), false);
+      g.strokePath();
+      g.beginPath();
+      g.arc(x + 2, y, 34, Phaser.Math.DegToRad(215), Phaser.Math.DegToRad(395), false);
+      g.strokePath();
+      g.fillStyle(0xffffff, 1);
+      g.lineStyle(5, 0x050915, 1);
+      g.fillTriangle(x - 43, y + 4, x - 13, y + 1, x - 27, y + 29);
+      g.strokeTriangle(x - 43, y + 4, x - 13, y + 1, x - 27, y + 29);
+      g.fillTriangle(x + 43, y - 4, x + 13, y - 1, x + 27, y - 29);
+      g.strokeTriangle(x + 43, y - 4, x + 13, y - 1, x + 27, y - 29);
+      layer.add(g);
+      return;
+    }
+
+    const g = this.add.graphics();
+    g.fillStyle(0xffffff, 1);
+    g.lineStyle(6, 0x050915, 1);
+    g.fillTriangle(x - 42, y + 36, x - 6, y - 46, x + 42, y + 20);
+    g.strokeTriangle(x - 42, y + 36, x - 6, y - 46, x + 42, y + 20);
+    g.fillStyle(0xe8f3ff, 1);
+    g.fillCircle(x + 2, y - 6, 15);
+    g.strokeCircle(x + 2, y - 6, 15);
+    g.fillStyle(0xffd84a, 1);
+    g.fillTriangle(x - 42, y + 36, x - 58, y + 52, x - 18, y + 42);
+    layer.add(g);
   }
 
   private handleReserveClick(reserveIndex: number): void {
@@ -428,7 +550,7 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({
       targets: state,
       value: travel,
-      duration: Math.max(180, travel * 0.62),
+      duration: Math.max(120, travel * 0.22),
       ease: 'Sine.easeInOut',
       onUpdate: () => {
         const distance = (active.distance + state.value) % this.track.total;
@@ -472,7 +594,7 @@ export class GameScene extends Phaser.Scene {
         return;
       }
 
-      this.time.delayedCall(70, () => this.shootCurrentLine(active, target));
+      this.time.delayedCall(18, () => this.shootCurrentLine(active, target));
     });
   }
 
@@ -507,7 +629,7 @@ export class GameScene extends Phaser.Scene {
       targets: projectile,
       x: target.image.x,
       y: target.image.y,
-      duration: 145,
+      duration: 58,
       ease: 'Quad.easeOut',
       onComplete: () => {
         projectile.destroy();
@@ -567,7 +689,7 @@ export class GameScene extends Phaser.Scene {
       targets: cell.image,
       scale: cell.image.scaleX * 1.25,
       alpha: 0,
-      duration: 180,
+      duration: 110,
       ease: 'Back.easeIn',
       onComplete: () => cell.image.destroy(),
     });
@@ -802,11 +924,11 @@ export class GameScene extends Phaser.Scene {
     barrel.setVisible(showBarrel);
     barrelTip.setVisible(showBarrel);
 
-    const image = mystery ? this.makeMysteryToken() : this.add.image(0, 0, `pig-${pig.color}`);
+    const image = mystery ? this.makeMysteryToken() : this.add.image(0, 0, `shooter-${pig.color}`);
     body.add([barrel, barrelTip, image]);
-    const badge = this.add.circle(50, -44, 28, 0xffffff).setStrokeStyle(6, 0x050915);
-    const ammoText = this.add.text(50, -66, mystery ? '?' : String(pig.ammo), this.textStyle(34)).setOrigin(0.5, 0).setStroke('#06101f', 7);
-    container.add([shadow, body, badge, ammoText]);
+    const ammoText = this.add.text(0, -49, mystery ? '?' : String(pig.ammo), this.textStyle(mystery ? 54 : 60)).setOrigin(0.5, 0).setStroke('#06101f', 10);
+    ammoText.setVisible(!mystery);
+    container.add([shadow, body, ammoText]);
 
     if (interactive) {
       const zone = this.add.zone(0, 0, 158, 158).setInteractive({ useHandCursor: true });
@@ -827,6 +949,28 @@ export class GameScene extends Phaser.Scene {
     container.add(this.makeRoundRect(88, 28, 14, 0xaab5ff, 0.35, undefined, 0, 1, -12, -31));
     container.add(this.add.text(0, -50, '?', this.textStyle(78)).setOrigin(0.5, 0).setStroke('#06101f', 11));
     return container;
+  }
+
+  private drawGearIcon(x: number, y: number, radius: number, fill: number, stroke: number, strokeWidth: number, depth?: number): void {
+    const g = this.add.graphics();
+    if (depth !== undefined) {
+      g.setDepth(depth);
+    }
+    g.fillStyle(fill, 1);
+    g.lineStyle(strokeWidth, stroke, 1);
+    for (let index = 0; index < 8; index += 1) {
+      const angle = (Math.PI * 2 * index) / 8;
+      const cx = x + Math.cos(angle) * radius * 0.76;
+      const cy = y + Math.sin(angle) * radius * 0.76;
+      g.fillRoundedRect(cx - 8, cy - 8, 16, 16, 4);
+      g.strokeRoundedRect(cx - 8, cy - 8, 16, 16, 4);
+    }
+    g.fillCircle(x, y, radius * 0.72);
+    g.strokeCircle(x, y, radius * 0.72);
+    g.fillStyle(0x3b465f, 1);
+    g.fillCircle(x, y, radius * 0.28);
+    g.lineStyle(Math.max(3, strokeWidth - 2), stroke, 1);
+    g.strokeCircle(x, y, radius * 0.28);
   }
 
   private positionOnTrack(distance: number): TrackPosition {
@@ -904,7 +1048,7 @@ export class GameScene extends Phaser.Scene {
   private reservePosition(index: number): { x: number; y: number } {
     const col = index % RESERVE_COLS;
     const row = Math.floor(index / RESERVE_COLS);
-    return { x: 142 + col * 133, y: 1530 + row * 150 };
+    return { x: 320 + col * 220, y: 1538 + row * 148 };
   }
 
   private faceCenter(active: ResolvingShooter): void {
@@ -915,12 +1059,7 @@ export class GameScene extends Phaser.Scene {
     const left = this.totalCells - this.clearedCells;
     this.blocksLeftText?.setText(`${left} blocks`);
     if (this.progressFill) {
-      const progress = this.totalCells === 0 ? 1 : this.clearedCells / this.totalCells;
       this.progressFill.clear();
-      this.progressFill.fillStyle(0x35c95f, 1);
-      this.progressFill.fillRoundedRect(396, 136, Math.max(14, 288 * progress), 20, 10);
-      this.progressFill.lineStyle(2, 0x99f2b0, 0.9);
-      this.progressFill.strokeRoundedRect(396, 136, Math.max(14, 288 * progress), 20, 10);
     }
     window.__RPIXEL_BLOCKS_LEFT__ = left;
   }

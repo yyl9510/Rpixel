@@ -39,12 +39,18 @@ User provided latest main menu and gameplay screenshots and asked to start imple
 - Prefer procedural/code-native assets in this pass rather than introducing external generated bitmap asset files.
 
 ### Claimed Output
-- TODO: fill when reporting completion.
+- Implemented a denser reference-style gameplay board with new orange/white color support and matching reserve shooter sequencing.
+- Reworked the gameplay screen toward the provided screenshot: dark purple background, large rounded arrow track, enlarged board, 5-slot rail/chrome, compact 3-column reserve rows, lower red booster bar, board-bottom platform with parked shooters, and stronger 3D shooter/block visuals.
+- Updated the main menu visual chrome with a gear icon and kept static/mock panels for surrounding systems.
+- Updated smoke tests to use runtime debug state and visible reserve coordinates instead of old hardcoded positions.
 
 ### Artifacts And Evidence
-- TODO: fill with changed files, commits, generated artifacts, logs, screenshots, or test output.
+- Changed files: `src/game/assets.ts`, `src/game/data/levels.ts`, `src/game/scenes/GameScene.ts`, `src/game/scenes/MenuScene.ts`, `src/game/types.ts`, `tests/smoke.spec.ts`.
+- Local validation: `npm run check` passed on 2026-05-30.
+- Local validation: `npm run test:smoke` passed on 2026-05-30 with 3/3 Playwright mobile Chromium tests, including reserve-to-slot, full-slot failure, treasure unlock, win panel, and Continue back to map.
 
 ## Steps
 - 2026-05-30T01:56:17Z: task created
 - 2026-05-30T01:58:42Z: Document screenshot visual alignment scope
   - pushed_commit: 6d9b141
+- 2026-05-30T02:17:21Z: Align gameplay visuals to Pixel Flow references
