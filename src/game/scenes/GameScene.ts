@@ -14,6 +14,9 @@ const SLOT_Y = 1360;
 const RESERVE_VISIBLE = 9;
 const RESERVE_COLS = 3;
 const TRACK_SPEED = 820;
+const CONVEYOR_SCROLL_SPEED = 180;
+const CONVEYOR_PLATE_SPACING = 78;
+const TRANSFER_PLATE_SPACING = 48;
 const MANUAL_LAUNCH_HIT_RADIUS = 108;
 const RESERVE_HIT_WIDTH = 206;
 const RESERVE_HIT_HEIGHT = 178;
@@ -69,6 +72,19 @@ interface TrackStep {
   key: string;
 }
 
+interface ConveyorPlate {
+  container: Phaser.GameObjects.Container;
+  offset: number;
+}
+
+interface TransferPlate {
+  container: Phaser.GameObjects.Container;
+  phase: number;
+  from: Phaser.Math.Vector2;
+  to: Phaser.Math.Vector2;
+  rotation: number;
+}
+
 interface ReserveEntry {
   pig: Pig;
   index: number;
@@ -110,6 +126,10 @@ export class GameScene extends Phaser.Scene {
   private slotChromeLayer?: Phaser.GameObjects.Container;
   private reserveLayer?: Phaser.GameObjects.Container;
   private manualHitLayer?: Phaser.GameObjects.Container;
+  private conveyorLayer?: Phaser.GameObjects.Container;
+  private conveyorPlates: ConveyorPlate[] = [];
+  private transferPlates: TransferPlate[] = [];
+  private conveyorOffset = 0;
   private blocksLeftText?: Phaser.GameObjects.Text;
   private activeCapacityText?: Phaser.GameObjects.Text;
   private speedToggleText?: Phaser.GameObjects.Text;
@@ -148,6 +168,9 @@ export class GameScene extends Phaser.Scene {
     this.coins = 10100;
     this.clearedCells = 0;
     this.speedMultiplier = 1;
+    this.conveyorOffset = 0;
+    this.conveyorPlates = [];
+    this.transferPlates = [];
     this.slots = Array.from({ length: SLOT_CAPACITY }, () => null);
     this.reserveColumns = this.buildReserveColumns(FIRST_LEVEL.pigs);
     this.shotLog = [];
@@ -169,6 +192,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    this.updateConveyor(delta);
+
     if (this.gameOver) {
       return;
     }
@@ -179,13 +204,22 @@ export class GameScene extends Phaser.Scene {
 
   private drawBackground(): void {
     const graphics = this.add.graphics();
-    const top = Phaser.Display.Color.ValueToColor(0x3d3d62);
-    const bottom = Phaser.Display.Color.ValueToColor(0x323352);
+    const top = Phaser.Display.Color.ValueToColor(0x48507a);
+    const bottom = Phaser.Display.Color.ValueToColor(0x252943);
 
     for (let y = 0; y < GAME_HEIGHT; y += 12) {
       const color = Phaser.Display.Color.Interpolate.ColorWithColor(top, bottom, GAME_HEIGHT, y);
       graphics.fillStyle(Phaser.Display.Color.GetColor(color.r, color.g, color.b), 1);
       graphics.fillRect(0, y, GAME_WIDTH, 12);
+    }
+
+    graphics.fillStyle(0xffffff, 0.045);
+    graphics.fillRoundedRect(42, 190, 996, 1070, 46);
+    graphics.fillStyle(0x071122, 0.16);
+    graphics.fillRoundedRect(74, 248, 932, 1010, 44);
+    graphics.lineStyle(3, 0xffffff, 0.045);
+    for (let y = 240; y < 1260; y += 68) {
+      graphics.lineBetween(84, y, 996, y - 42);
     }
 
     graphics.lineStyle(7, 0xffffff, 0.05);
@@ -259,42 +293,135 @@ export class GameScene extends Phaser.Scene {
   private drawTrack(): void {
     const width = this.track.right - this.track.left;
     const height = this.track.bottom - this.track.top;
+    const shadow = this.add.graphics().setDepth(2);
+    shadow.fillStyle(0x050915, 0.34);
+    shadow.fillRoundedRect(this.track.left - 10, this.track.top + 18, width + 20, height + 18, 92);
+
     const g = this.add.graphics().setDepth(3);
-    g.fillStyle(0x4a4b76, 1);
+    g.fillStyle(0x111a34, 1);
     g.fillRoundedRect(this.track.left, this.track.top, width, height, 86);
-    g.lineStyle(10, 0x10162f, 0.95);
+    g.lineStyle(12, 0x050915, 0.95);
     g.strokeRoundedRect(this.track.left, this.track.top, width, height, 86);
-    g.lineStyle(12, 0xbfd7ff, 0.78);
-    g.strokeRoundedRect(this.track.left + 10, this.track.top + 10, width - 20, height - 20, 76);
-    g.lineStyle(5, 0xffffff, 0.72);
-    g.strokeRoundedRect(this.track.left + 22, this.track.top + 22, width - 44, height - 44, 62);
-    this.drawTrackArrows();
+    g.fillStyle(0x253f67, 0.96);
+    g.fillRoundedRect(this.track.left + 14, this.track.top + 14, width - 28, height - 28, 74);
+    g.lineStyle(8, 0x82bdf9, 0.82);
+    g.strokeRoundedRect(this.track.left + 14, this.track.top + 14, width - 28, height - 28, 74);
+    g.lineStyle(5, 0xffffff, 0.5);
+    g.strokeRoundedRect(this.track.left + 30, this.track.top + 30, width - 60, height - 60, 60);
+    g.lineStyle(10, 0x071122, 0.72);
+    g.strokeRoundedRect(this.track.left + 48, this.track.top + 48, width - 96, height - 96, 48);
+
+    this.conveyorLayer = this.add.container(0, 0).setDepth(4);
+    this.drawTransferConveyorLanes();
+    this.createConveyorPlates();
+    this.updateConveyor(0);
   }
 
-  private drawTrackArrows(): void {
-    const g = this.add.graphics().setDepth(4);
-    const drawArrow = (x: number, y: number, rotation: number): void => {
-      const points = [
-        new Phaser.Math.Vector2(24, 0).rotate(rotation).add(new Phaser.Math.Vector2(x, y)),
-        new Phaser.Math.Vector2(-18, -17).rotate(rotation).add(new Phaser.Math.Vector2(x, y)),
-        new Phaser.Math.Vector2(-18, 17).rotate(rotation).add(new Phaser.Math.Vector2(x, y)),
-      ].map((point) => new Phaser.Geom.Point(point.x, point.y));
-
-      g.fillStyle(0xc7d2ff, 0.22);
-      g.fillPoints(points, true);
-      g.lineStyle(4, 0xdce7ff, 0.16);
-      g.strokePoints(points, true);
-    };
-
-    const horizontalInset = 150;
-    const verticalInset = 150;
-    for (let index = 0; index < 4; index += 1) {
-      const t = index / 3;
-      drawArrow(Phaser.Math.Linear(this.track.startX - 48, this.track.right - horizontalInset, t), this.track.bottom, 0);
-      drawArrow(this.track.right, Phaser.Math.Linear(this.track.bottom - verticalInset, this.track.top + verticalInset, t), -Math.PI / 2);
-      drawArrow(Phaser.Math.Linear(this.track.right - horizontalInset, this.track.left + horizontalInset, t), this.track.top, Math.PI);
-      drawArrow(this.track.left, Phaser.Math.Linear(this.track.top + verticalInset, this.track.bottom - verticalInset, t), Math.PI / 2);
+  private drawTransferConveyorLanes(): void {
+    if (!this.conveyorLayer) {
+      return;
     }
+
+    const uploadStart = this.transferUploadStart();
+    const uploadEnd = this.transferUploadEnd();
+    const exitStart = this.transferExitStart();
+    const exitEnd = this.transferExitEnd();
+    const laneY = (uploadStart.y + uploadEnd.y) / 2;
+    const laneHeight = Math.abs(uploadStart.y - uploadEnd.y) + 34;
+
+    this.conveyorLayer.add(this.makeRoundRect(54, laneHeight, 18, 0x101830, 0.98, 0x9fd7ff, 4, 0.42, uploadStart.x, laneY));
+    this.conveyorLayer.add(this.makeRoundRect(54, laneHeight, 18, 0x101830, 0.98, 0x9fd7ff, 4, 0.42, exitStart.x, laneY));
+    this.conveyorLayer.add(this.makeRoundRect(116, 46, 18, 0x243f67, 0.98, 0x9fd7ff, 4, 0.5, this.track.startX + 56, this.track.bottom + 10));
+    this.conveyorLayer.add(this.makeRoundRect(144, 44, 16, 0x17243f, 0.92, 0x050915, 4, 0.8, this.track.startX + 98, this.track.bottom + 136));
+
+    for (let index = 0; index < 4; index += 1) {
+      const upPlate = this.makeConveyorPlate(42, 24);
+      upPlate.setRotation(-Math.PI / 2);
+      this.conveyorLayer.add(upPlate);
+      this.transferPlates.push({
+        container: upPlate,
+        phase: index / 4,
+        from: uploadStart,
+        to: uploadEnd,
+        rotation: -Math.PI / 2,
+      });
+
+      const downPlate = this.makeConveyorPlate(42, 24);
+      downPlate.setRotation(Math.PI / 2);
+      this.conveyorLayer.add(downPlate);
+      this.transferPlates.push({
+        container: downPlate,
+        phase: index / 4,
+        from: exitStart,
+        to: exitEnd,
+        rotation: Math.PI / 2,
+      });
+    }
+  }
+
+  private createConveyorPlates(): void {
+    if (!this.conveyorLayer) {
+      return;
+    }
+
+    const count = Math.ceil(this.track.total / CONVEYOR_PLATE_SPACING);
+    for (let index = 0; index < count; index += 1) {
+      const plate = this.makeConveyorPlate(62, 30);
+      this.conveyorLayer.add(plate);
+      this.conveyorPlates.push({ container: plate, offset: index * CONVEYOR_PLATE_SPACING });
+    }
+  }
+
+  private makeConveyorPlate(width: number, height: number): Phaser.GameObjects.Container {
+    const container = this.add.container(0, 0);
+    container.add(this.add.ellipse(0, height * 0.22, width * 0.86, height * 0.58, 0x050915, 0.22));
+    container.add(this.makeRoundRect(width, height, 8, 0x2b5680, 0.98, 0x071122, 3, 0.88));
+    container.add(this.makeRoundRect(width - 14, 6, 3, 0xffffff, 0.24, undefined, 0, 1, -3, -height * 0.22));
+    container.add(this.makeRoundRect(width * 0.34, 5, 2, 0x9fe7ff, 0.52, undefined, 0, 1, width * 0.16, height * 0.18));
+    const arrow = this.add.triangle(width * 0.1, 0, -8, -10, -8, 10, 12, 0, 0xeaf9ff, 0.92).setStrokeStyle(2, 0x071122, 0.5);
+    container.add(arrow);
+    return container;
+  }
+
+  private updateConveyor(delta: number): void {
+    if (!this.conveyorLayer) {
+      return;
+    }
+
+    const scroll = (CONVEYOR_SCROLL_SPEED * this.speedMultiplier * delta) / 1000;
+    this.conveyorOffset = (this.conveyorOffset + scroll) % CONVEYOR_PLATE_SPACING;
+
+    this.conveyorPlates.forEach((plate) => {
+      const position = this.positionOnTrack((plate.offset + this.conveyorOffset) % this.track.total);
+      plate.container.setPosition(position.x, position.y);
+      plate.container.setRotation(this.trackRotationFor(position.side));
+    });
+
+    const phaseDelta = scroll / TRANSFER_PLATE_SPACING;
+    this.transferPlates.forEach((plate) => {
+      plate.phase = (plate.phase + phaseDelta) % 1;
+      plate.container.setPosition(Phaser.Math.Linear(plate.from.x, plate.to.x, plate.phase), Phaser.Math.Linear(plate.from.y, plate.to.y, plate.phase));
+      plate.container.setRotation(plate.rotation);
+    });
+
+    window.__RPIXEL_CONVEYOR_OFFSET__ = Number(this.conveyorOffset.toFixed(2));
+    window.__RPIXEL_CONVEYOR_MARKERS__ = this.conveyorPlates.length;
+  }
+
+  private transferUploadStart(): Phaser.Math.Vector2 {
+    return new Phaser.Math.Vector2(this.track.startX + 24, this.track.bottom + 128);
+  }
+
+  private transferUploadEnd(): Phaser.Math.Vector2 {
+    return new Phaser.Math.Vector2(this.track.startX + 24, this.track.bottom + 16);
+  }
+
+  private transferExitStart(): Phaser.Math.Vector2 {
+    return new Phaser.Math.Vector2(this.track.startX + 86, this.track.bottom + 16);
+  }
+
+  private transferExitEnd(): Phaser.Math.Vector2 {
+    return new Phaser.Math.Vector2(this.track.startX + 86, this.track.bottom + 128);
   }
 
   private drawBoard(): void {
@@ -500,19 +627,34 @@ export class GameScene extends Phaser.Scene {
     this.resolvingShooters.push(active);
     this.updateDebugState();
 
+    const uploadStart = this.transferUploadStart();
+    const uploadEnd = this.transferUploadEnd();
+
     this.tweens.add({
       targets: active.container,
-      x: this.track.startX,
-      y: this.track.bottom,
-      scale: 0.7,
-      duration: 230,
+      x: uploadStart.x,
+      y: uploadStart.y,
+      scale: 0.64,
+      duration: 170,
       ease: 'Quad.easeOut',
       onUpdate: () => this.faceTrackSide(active, 'bottom'),
       onComplete: () => {
-        active.distance = 0;
-        active.orbiting = true;
-        this.faceTrackSide(active, 'bottom');
-        this.tryFireAtCurrentTrackStep(active);
+        this.tweens.add({
+          targets: active.container,
+          x: uploadEnd.x,
+          y: uploadEnd.y,
+          scale: 0.7,
+          duration: 150,
+          ease: 'Sine.easeInOut',
+          onUpdate: () => this.faceTrackSide(active, 'bottom'),
+          onComplete: () => {
+            active.distance = 0;
+            active.container.setPosition(this.track.startX, this.track.bottom);
+            active.orbiting = true;
+            this.faceTrackSide(active, 'bottom');
+            this.tryFireAtCurrentTrackStep(active);
+          },
+        });
       },
     });
   }
@@ -586,21 +728,16 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_SHOT_LOG__ = [...this.shotLog];
 
     const style = COLOR_STYLES[active.pig.color];
-    const beam = this.add.graphics().setDepth(22);
-    beam.lineStyle(26, 0xffffff, 0.2);
-    beam.lineBetween(active.container.x, active.container.y, target.image.x, target.image.y);
-    beam.lineStyle(15, style.light, 0.78);
-    beam.lineBetween(active.container.x, active.container.y, target.image.x, target.image.y);
-    beam.lineStyle(7, 0xffffff, 0.9);
-    beam.lineBetween(active.container.x, active.container.y, target.image.x, target.image.y);
-
-    const projectile = this.add.circle(active.container.x, active.container.y, 18, style.base).setStrokeStyle(5, 0xffffff, 0.95).setDepth(23);
+    const projectile = this.add.container(active.container.x, active.container.y).setDepth(23);
+    projectile.add(this.add.circle(-6, 7, 20, style.dark, 0.62));
+    projectile.add(this.add.circle(0, 0, 18, style.base, 1).setStrokeStyle(4, style.dark, 0.9));
+    projectile.add(this.add.circle(-5, -6, 6, style.light, 0.92));
     this.tweens.add({ targets: target.image, scale: target.image.scaleX * 1.14, duration: 75, yoyo: true, ease: 'Quad.easeOut' });
-    this.tweens.add({ targets: beam, alpha: 0, duration: 220, onComplete: () => beam.destroy() });
     this.tweens.add({
       targets: projectile,
       x: target.image.x,
       y: target.image.y,
+      scale: 0.78,
       duration: 58,
       ease: 'Quad.easeOut',
       onComplete: () => {
@@ -796,22 +933,46 @@ export class GameScene extends Phaser.Scene {
     this.renderManualLaunchHitZones();
 
     const slotPosition = this.slotPosition(slotIndex);
+    const exitStart = this.transferExitStart();
+    const exitEnd = this.transferExitEnd();
     this.tweens.add({
       targets: active.container,
-      x: slotPosition.x,
-      y: slotPosition.y,
-      scale: 0.72,
-      duration: 230,
-      ease: 'Back.easeOut',
+      x: exitStart.x,
+      y: exitStart.y,
+      scale: 0.66,
+      duration: 90,
+      ease: 'Quad.easeOut',
       onUpdate: () => this.faceTrackSide(active, 'bottom'),
       onComplete: () => {
-        if (this.gameOver) {
-          return;
-        }
-        slot.status = 'stuck';
-        this.bindPigTokenClick(slot.container, 0.72, () => this.handleSlotClick(slot.slotIndex));
-        this.renderManualLaunchHitZones();
-        this.updateDebugState();
+        this.tweens.add({
+          targets: active.container,
+          x: exitEnd.x,
+          y: exitEnd.y,
+          scale: 0.66,
+          duration: 140,
+          ease: 'Sine.easeInOut',
+          onUpdate: () => this.faceTrackSide(active, 'bottom'),
+          onComplete: () => {
+            this.tweens.add({
+              targets: active.container,
+              x: slotPosition.x,
+              y: slotPosition.y,
+              scale: 0.72,
+              duration: 220,
+              ease: 'Back.easeOut',
+              onUpdate: () => this.faceTrackSide(active, 'bottom'),
+              onComplete: () => {
+                if (this.gameOver) {
+                  return;
+                }
+                slot.status = 'stuck';
+                this.bindPigTokenClick(slot.container, 0.72, () => this.handleSlotClick(slot.slotIndex));
+                this.renderManualLaunchHitZones();
+                this.updateDebugState();
+              },
+            });
+          },
+        });
       },
     });
 
@@ -1410,13 +1571,17 @@ export class GameScene extends Phaser.Scene {
 
   private faceTrackSide(active: ResolvingShooter, side = active.currentSide): void {
     active.currentSide = side;
+    active.body.setRotation(this.trackRotationFor(side));
+  }
+
+  private trackRotationFor(side: Side): number {
     const rotations: Record<Side, number> = {
       bottom: 0,
       left: Math.PI / 2,
       top: Math.PI,
       right: -Math.PI / 2,
     };
-    active.body.setRotation(rotations[side]);
+    return rotations[side];
   }
 
   private updateProgressText(): void {
@@ -1442,6 +1607,8 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_TREASURE_UNLOCKED__ = Boolean(this.treasure?.unlocked);
     window.__RPIXEL_COINS__ = this.coins;
     window.__RPIXEL_SPEED_MULTIPLIER__ = this.speedMultiplier;
+    window.__RPIXEL_CONVEYOR_OFFSET__ = Number(this.conveyorOffset.toFixed(2));
+    window.__RPIXEL_CONVEYOR_MARKERS__ = this.conveyorPlates.length;
     window.__RPIXEL_BOARD_COLOR_COUNTS__ = this.countInitialBoardColors();
     window.__RPIXEL_AMMO_COLOR_TOTALS__ = this.countInitialAmmoTotals();
     window.__RPIXEL_ALL_SHOOTER_AMMO__ = FIRST_LEVEL.pigs.map((pig) => pig.ammo);

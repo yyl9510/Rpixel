@@ -77,6 +77,12 @@ test('loads the menu and launches shooters through the waiting area', async ({ p
   expect(balance.shooterAmmo.length).toBeGreaterThan(0);
   expect(balance.shooterAmmo.every((value) => value > 0 && value % 5 === 0)).toBe(true);
 
+  const conveyorStart = await page.evaluate(() => ({ offset: window.__RPIXEL_CONVEYOR_OFFSET__ ?? 0, markers: window.__RPIXEL_CONVEYOR_MARKERS__ ?? 0 }));
+  expect(conveyorStart.markers).toBeGreaterThan(20);
+  await page.waitForTimeout(260);
+  const conveyorEnd = await page.evaluate(() => window.__RPIXEL_CONVEYOR_OFFSET__ ?? 0);
+  expect(Math.abs(conveyorEnd - conveyorStart.offset)).toBeGreaterThan(20);
+
   const shape = await page.evaluate(() => window.__RPIXEL_BOARD_SHAPE__);
   expect(shape?.empty).toBeGreaterThan(30);
   expect(new Set(shape?.rowWidths ?? []).size).toBeGreaterThan(3);
