@@ -42,3 +42,4 @@ Continue after explicit shooter hit zones by adding stronger automated coverage 
 ## Steps
 - 2026-05-30T17:00:05Z: task created
 - 2026-05-30T17:03:18Z: Broaden shooter hit zone smoke coverage
+  - pushed_commit: e48aca1
