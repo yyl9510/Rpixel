@@ -46,3 +46,4 @@ User reports many reserve-row and waiting-area shooters are not clickable. Guara
 ## Steps
 - 2026-05-30T16:25:10Z: task created
 - 2026-05-30T16:34:30Z: Fix manual shooter click dispatch
+  - pushed_commit: f9b6bb3
