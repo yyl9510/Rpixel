@@ -103,30 +103,78 @@ test('can run multiple shooters on the track at once', async ({ page }) => {
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.8);
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'game');
 
+  const initialExposed = new Set(await page.evaluate(() => window.__RPIXEL_EXPOSED_COLORS__ ?? []));
+  const first = (await visibleReserve(page)).find((item) => !item.locked && initialExposed.has(item.color));
+  expect(first).toBeTruthy();
+  if (!first) {
+    return;
+  }
+  await clickGame(page, box, first.x, first.y);
+  await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) >= 1, undefined, { timeout: 10_000 });
+
   const blue = (await visibleReserve(page)).find((item) => !item.locked && item.color === 'blue');
   expect(blue).toBeTruthy();
   if (!blue) {
     return;
   }
   await clickGame(page, box, blue.x, blue.y);
-  await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) >= 1, undefined, { timeout: 10_000 });
+  await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) >= 2, undefined, { timeout: 10_000 });
   await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? []).some((item) => item.color === 'blue' && item.orbiting), undefined, { timeout: 10_000 });
   const firstBluePosition = await page.evaluate(() => (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? []).find((item) => item.color === 'blue')?.distance ?? 0);
   await page.waitForTimeout(500);
   const secondBluePosition = await page.evaluate(() => (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? []).find((item) => item.color === 'blue')?.distance ?? 0);
   expect(Math.abs(secondBluePosition - firstBluePosition)).toBeGreaterThan(80);
 
-  const green = (await visibleReserve(page)).find((item) => !item.locked && item.color === 'green');
-  expect(green).toBeTruthy();
-  if (!green) {
-    return;
-  }
-  await clickGame(page, box, green.x, green.y);
-  await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) >= 2, undefined, { timeout: 10_000 });
-
   const active = await page.evaluate(() => window.__RPIXEL_ACTIVE_PIGS__ ?? 0);
   expect(active).toBeGreaterThanOrEqual(2);
   expect(active).toBeLessThanOrEqual(5);
+});
+
+test('advances only the clicked reserve column and fires one shot per track step', async ({ page }) => {
+  await page.reload();
+  await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'menu');
+
+  const { box } = await gameBox(page);
+  if (!box) {
+    return;
+  }
+
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.8);
+  await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'game');
+
+  const before = await visibleReserve(page);
+  const topRow = before.filter((item) => !item.locked).sort((a, b) => a.col - b.col);
+  expect(topRow).toHaveLength(3);
+
+  const exposed = new Set(await page.evaluate(() => window.__RPIXEL_EXPOSED_COLORS__ ?? []));
+  const chosen = topRow.find((item) => exposed.has(item.color)) ?? topRow[0];
+  const unchanged = topRow.filter((item) => item.col !== chosen.col).map((item) => ({ col: item.col, id: item.id }));
+  await clickGame(page, box, chosen.x, chosen.y);
+
+  await page.waitForFunction(
+    ({ col, id }) => {
+      const nextTop = (window.__RPIXEL_VISIBLE_RESERVE__ ?? []).find((item) => item.col === col && item.row === 0);
+      return Boolean(nextTop && nextTop.id !== id);
+    },
+    { col: chosen.col, id: chosen.id },
+    { timeout: 10_000 },
+  );
+
+  const after = await visibleReserve(page);
+  unchanged.forEach((item) => {
+    expect(after.find((entry) => entry.col === item.col && entry.row === 0)?.id).toBe(item.id);
+  });
+  expect(after.filter((item) => !item.locked).every((item) => item.row === 0)).toBe(true);
+
+  await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? []).some((item) => item.orbiting), undefined, { timeout: 10_000 });
+  const active = await page.evaluate(() => (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? [])[0]);
+  const rotations: Record<string, number> = { bottom: 0, left: Math.PI / 2, top: Math.PI, right: -Math.PI / 2 };
+  expect(Math.abs(active.rotation - rotations[active.side])).toBeLessThan(0.01);
+
+  await page.waitForFunction(() => (window.__RPIXEL_SHOT_LOG__ ?? []).length >= 2, undefined, { timeout: 12_000 });
+  const shots = await page.evaluate(() => window.__RPIXEL_SHOT_LOG__ ?? []);
+  const stepKeys = shots.map((shot) => `${shot.pigId}:${shot.side}:${shot.lineIndex}`);
+  expect(new Set(stepKeys).size).toBe(stepKeys.length);
 });
 
 test('fails only when all active slots are stuck and another reserve shooter is clicked', async ({ page }) => {

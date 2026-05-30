@@ -15,11 +15,12 @@ declare global {
     __RPIXEL_LOCKED_RESERVE__?: number;
     __RPIXEL_TREASURE_UNLOCKED__?: boolean;
     __RPIXEL_COINS__?: number;
-    __RPIXEL_VISIBLE_RESERVE__?: Array<{ index: number; color: string; locked: boolean; x: number; y: number }>;
-    __RPIXEL_ACTIVE_SHOOTERS__?: Array<{ color: string; ammo: number; distance: number; x: number; y: number; orbiting: boolean }>;
+    __RPIXEL_VISIBLE_RESERVE__?: Array<{ index: number; row: number; col: number; id: string; color: string; locked: boolean; x: number; y: number }>;
+    __RPIXEL_ACTIVE_SHOOTERS__?: Array<{ color: string; ammo: number; distance: number; x: number; y: number; orbiting: boolean; side: string; rotation: number; pendingShots: number }>;
     __RPIXEL_EXPOSED_COLORS__?: string[];
     __RPIXEL_BOARD_COLOR_COUNTS__?: Record<string, number>;
     __RPIXEL_AMMO_COLOR_TOTALS__?: Record<string, number>;
+    __RPIXEL_SHOT_LOG__?: Array<{ pigId: string; color: string; side: string; lineIndex: number; cell: string; distance: number }>;
   }
 }
 

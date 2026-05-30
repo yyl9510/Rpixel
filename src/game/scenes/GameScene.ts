@@ -14,7 +14,6 @@ const SLOT_Y = 1360;
 const RESERVE_VISIBLE = 9;
 const RESERVE_COLS = 3;
 const TRACK_SPEED = 820;
-const FIRE_COOLDOWN_MS = 32;
 
 type Side = 'bottom' | 'right' | 'top' | 'left';
 type SlotStatus = 'entering' | 'stuck' | 'activating';
@@ -58,6 +57,20 @@ interface EdgeTarget {
   distance: number;
 }
 
+interface TrackStep {
+  side: Side;
+  lineIndex: number;
+  distance: number;
+  key: string;
+}
+
+interface ReserveEntry {
+  pig: Pig;
+  index: number;
+  row: number;
+  col: number;
+}
+
 interface SlotShooter {
   slotIndex: number;
   status: SlotStatus;
@@ -74,14 +87,16 @@ interface ResolvingShooter {
   ammoText: Phaser.GameObjects.Text;
   distance: number;
   orbiting: boolean;
-  fireCooldownMs: number;
+  currentSide: Side;
+  pendingShots: number;
+  lastTrackStepKey?: string;
   targetKey?: string;
 }
 
 export class GameScene extends Phaser.Scene {
   private cells: Array<Array<BoardCell | null>> = [];
   private slots: Array<SlotShooter | null> = [];
-  private reserve: Pig[] = [];
+  private reserveColumns: Pig[][] = [];
   private resolvingShooters: ResolvingShooter[] = [];
   private reservedTargetKeys = new Set<string>();
   private slotChromeLayer?: Phaser.GameObjects.Container;
@@ -93,6 +108,7 @@ export class GameScene extends Phaser.Scene {
   private coins = 10100;
   private totalCells = 0;
   private clearedCells = 0;
+  private shotLog: Array<{ pigId: string; color: PigColor; side: Side; lineIndex: number; cell: string; distance: number }> = [];
   private gameOver = false;
   private evaluationQueued = false;
 
@@ -105,6 +121,7 @@ export class GameScene extends Phaser.Scene {
   private readonly boardY = BOARD_TOP + (BOARD_BOX_HEIGHT - this.boardHeight) / 2;
   private readonly center = { x: GAME_WIDTH / 2, y: BOARD_TOP + BOARD_BOX_HEIGHT / 2 };
   private readonly track: TrackMetrics = this.createTrackMetrics();
+  private readonly trackSteps: TrackStep[] = this.createTrackSteps();
 
   constructor() {
     super('GameScene');
@@ -120,7 +137,8 @@ export class GameScene extends Phaser.Scene {
     this.coins = 10100;
     this.clearedCells = 0;
     this.slots = Array.from({ length: SLOT_CAPACITY }, () => null);
-    this.reserve = FIRST_LEVEL.pigs.map((pig) => ({ ...pig }));
+    this.reserveColumns = this.buildReserveColumns(FIRST_LEVEL.pigs);
+    this.shotLog = [];
     this.totalCells = FIRST_LEVEL.grid.flat().filter((color) => color !== null).length;
 
     this.drawBackground();
@@ -302,11 +320,10 @@ export class GameScene extends Phaser.Scene {
     this.reserveLayer.removeAll(true);
     this.reserveLayer.add(this.makeRoundRect(620, 430, 68, 0x2f3151, 0.32, undefined, 0, 1, 540, 1655));
 
-    const visible = this.reserve.slice(0, RESERVE_VISIBLE);
-    visible.forEach((pig, index) => {
-      const position = this.reservePosition(index);
-      const locked = this.isReserveLocked(pig, index);
-      const token = this.createPigToken(pig, position.x, position.y, 0.74, !locked, () => this.handleReserveClick(index), false, locked);
+    this.visibleReserveEntries().forEach((entry) => {
+      const position = this.reservePosition(entry.index);
+      const locked = this.isReserveLocked(entry);
+      const token = this.createPigToken(entry.pig, position.x, position.y, 0.74, !locked, () => this.handleReserveClick(entry.index), false, locked);
       token.container.setAlpha(locked ? 0.74 : 1);
       this.reserveLayer?.add(token.container);
     });
@@ -389,12 +406,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleReserveClick(reserveIndex: number): void {
-    if (this.gameOver || reserveIndex >= this.reserve.length) {
+    if (this.gameOver) {
       return;
     }
 
-    const candidate = this.reserve[reserveIndex];
-    if (!candidate || this.isReserveLocked(candidate, reserveIndex)) {
+    const entry = this.reserveEntryAt(reserveIndex);
+    if (!entry || this.isReserveLocked(entry)) {
       return;
     }
 
@@ -410,8 +427,8 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const reservePosition = this.reservePosition(reserveIndex);
-    const [pig] = this.reserve.splice(reserveIndex, 1);
+    const reservePosition = this.reservePosition(entry.index);
+    const [pig] = this.reserveColumns[entry.col].splice(entry.row, 1);
     const slottedPig = { ...pig, mystery: false };
     const token = this.createPigToken(slottedPig, reservePosition.x, reservePosition.y, 0.58, false, undefined, true, false);
     token.container.setDepth(24);
@@ -448,8 +465,8 @@ export class GameScene extends Phaser.Scene {
     this.updateDebugState();
   }
 
-  private isReserveLocked(pig: Pig, reserveIndex: number): boolean {
-    return Boolean(pig.mystery) && reserveIndex >= RESERVE_COLS;
+  private isReserveLocked(entry: ReserveEntry): boolean {
+    return entry.row > 0;
   }
 
   private evaluateSlots(): void {
@@ -503,7 +520,8 @@ export class GameScene extends Phaser.Scene {
       ammoText: slot.ammoText,
       distance: 0,
       orbiting: false,
-      fireCooldownMs: 0,
+      currentSide: 'bottom',
+      pendingShots: 0,
     };
     this.resolvingShooters.push(active);
     this.updateDebugState();
@@ -515,12 +533,12 @@ export class GameScene extends Phaser.Scene {
       scale: 0.7,
       duration: 230,
       ease: 'Quad.easeOut',
-      onUpdate: () => this.faceCenter(active),
+      onUpdate: () => this.faceTrackSide(active, 'bottom'),
       onComplete: () => {
         active.distance = 0;
         active.orbiting = true;
-        active.fireCooldownMs = 0;
-        this.faceCenter(active);
+        this.faceTrackSide(active, 'bottom');
+        this.tryFireAtCurrentTrackStep(active);
       },
     });
   }
@@ -530,67 +548,68 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    const previousDistance = active.distance;
     active.distance = (active.distance + (TRACK_SPEED * delta) / 1000) % this.track.total;
     const position = this.positionOnTrack(active.distance);
     active.container.setPosition(position.x, position.y);
-    this.faceCenter(active);
-    active.fireCooldownMs = Math.max(0, active.fireCooldownMs - delta);
+    this.faceTrackSide(active, position.side);
 
-    if (active.pig.ammo <= 0 || !this.hasRemainingColor(active.pig.color)) {
+    if ((active.pig.ammo <= 0 || !this.hasRemainingColor(active.pig.color)) && active.pendingShots === 0) {
       this.finishResolvingShooter(active);
       return;
     }
 
-    if (active.fireCooldownMs > 0) {
-      return;
+    for (const step of this.crossedTrackSteps(previousDistance, active.distance)) {
+      if (this.tryFireAtTrackStep(active, step)) {
+        break;
+      }
+    }
+  }
+
+  private tryFireAtCurrentTrackStep(active: ResolvingShooter): boolean {
+    const step = this.trackSteps.find((candidate) => Math.abs(candidate.distance - active.distance) < 0.5);
+    return step ? this.tryFireAtTrackStep(active, step) : false;
+  }
+
+  private tryFireAtTrackStep(active: ResolvingShooter, step: TrackStep): boolean {
+    if (active.lastTrackStepKey === step.key || !this.isResolvingActive(active) || active.pig.ammo <= 0) {
+      return false;
     }
 
-    const target = this.findForwardTarget(active, position);
+    active.lastTrackStepKey = step.key;
+    const target = this.findVisibleTarget(step.side, step.lineIndex, active.pig.color, active.targetKey);
     if (!target) {
-      return;
+      return false;
     }
 
-    active.fireCooldownMs = FIRE_COOLDOWN_MS;
     this.reserveTarget(active, target);
-    this.fireProjectile(active, target, () => {
-      if (!this.gameOver && this.isResolvingActive(active) && (active.pig.ammo <= 0 || !this.hasRemainingColor(active.pig.color))) {
+    this.fireProjectile(active, target, step, () => {
+      if (!this.gameOver && this.isResolvingActive(active) && active.pendingShots === 0 && (active.pig.ammo <= 0 || !this.hasRemainingColor(active.pig.color))) {
         this.finishResolvingShooter(active);
       }
     });
-  }
-
-  private findForwardTarget(active: ResolvingShooter, position: TrackPosition): BoardCell | null {
-    const lineIndex = this.lineIndexForTrackPosition(position);
-    if (lineIndex === null) {
-      return null;
-    }
-
-    return this.findVisibleTarget(position.side, lineIndex, active.pig.color, active.targetKey);
-  }
-
-  private lineIndexForTrackPosition(position: TrackPosition): number | null {
-    if (position.side === 'bottom' || position.side === 'top') {
-      if (position.x < this.boardX || position.x >= this.boardX + this.boardWidth) {
-        return null;
-      }
-      return Phaser.Math.Clamp(Math.floor((position.x - this.boardX) / this.cellSize), 0, this.cols - 1);
-    }
-
-    if (position.y < this.boardY || position.y >= this.boardY + this.boardHeight) {
-      return null;
-    }
-    return Phaser.Math.Clamp(Math.floor((position.y - this.boardY) / this.cellSize), 0, this.rows - 1);
+    return true;
   }
 
   private hasRemainingColor(color: PigColor): boolean {
     return this.cells.some((row) => row.some((cell) => Boolean(cell && !cell.cleared && cell.color === color)));
   }
 
-  private fireProjectile(active: ResolvingShooter, target: BoardCell, onComplete: () => void): void {
+  private fireProjectile(active: ResolvingShooter, target: BoardCell, step: TrackStep, onComplete: () => void): void {
     this.releaseReservedTarget(active);
     target.pending = true;
+    active.pendingShots += 1;
     active.pig.ammo -= 1;
     active.ammoText.setText(String(active.pig.ammo));
+    this.shotLog.push({
+      pigId: active.pig.id,
+      color: active.pig.color,
+      side: step.side,
+      lineIndex: step.lineIndex,
+      cell: this.cellKey(target),
+      distance: Math.round(step.distance),
+    });
+    window.__RPIXEL_SHOT_LOG__ = [...this.shotLog];
 
     const style = COLOR_STYLES[active.pig.color];
     const beam = this.add.graphics().setDepth(22);
@@ -613,6 +632,7 @@ export class GameScene extends Phaser.Scene {
       onComplete: () => {
         projectile.destroy();
         this.clearCell(target);
+        active.pendingShots = Math.max(0, active.pendingShots - 1);
         onComplete();
       },
     });
@@ -993,6 +1013,36 @@ export class GameScene extends Phaser.Scene {
     active.targetKey = undefined;
   }
 
+  private createTrackSteps(): TrackStep[] {
+    const steps: TrackStep[] = [];
+    const sides: Side[] = ['bottom', 'right', 'top', 'left'];
+    sides.forEach((side) => {
+      const lineCount = side === 'top' || side === 'bottom' ? this.cols : this.rows;
+      for (let lineIndex = 0; lineIndex < lineCount; lineIndex += 1) {
+        steps.push({
+          side,
+          lineIndex,
+          distance: this.trackDistanceFor(side, lineIndex),
+          key: `${side}:${lineIndex}`,
+        });
+      }
+    });
+    return steps.sort((a, b) => a.distance - b.distance);
+  }
+
+  private crossedTrackSteps(fromDistance: number, toDistance: number): TrackStep[] {
+    const travel = (toDistance - fromDistance + this.track.total) % this.track.total;
+    if (travel <= 0) {
+      return [];
+    }
+
+    return this.trackSteps
+      .map((step) => ({ step, ahead: (step.distance - fromDistance + this.track.total) % this.track.total }))
+      .filter(({ ahead }) => ahead > 0 && ahead <= travel)
+      .sort((a, b) => a.ahead - b.ahead)
+      .map(({ step }) => step);
+  }
+
   private positionOnTrack(distance: number): TrackPosition {
     const [bottomRight, rightUp, topLeft, leftDown] = this.track.segments;
 
@@ -1065,14 +1115,57 @@ export class GameScene extends Phaser.Scene {
     return { x: 160 + index * 190, y: SLOT_Y };
   }
 
+  private buildReserveColumns(pigs: Pig[]): Pig[][] {
+    const columns = Array.from({ length: RESERVE_COLS }, () => [] as Pig[]);
+    pigs.forEach((pig, index) => {
+      columns[index % RESERVE_COLS].push({ ...pig });
+    });
+    return columns;
+  }
+
+  private reserveCoordinates(index: number): { row: number; col: number } {
+    return { col: index % RESERVE_COLS, row: Math.floor(index / RESERVE_COLS) };
+  }
+
+  private reserveEntryAt(index: number): ReserveEntry | null {
+    const { row, col } = this.reserveCoordinates(index);
+    const pig = this.reserveColumns[col]?.[row];
+    return pig ? { pig, index, row, col } : null;
+  }
+
+  private visibleReserveEntries(): ReserveEntry[] {
+    const entries: ReserveEntry[] = [];
+    const visibleRows = Math.ceil(RESERVE_VISIBLE / RESERVE_COLS);
+    for (let row = 0; row < visibleRows; row += 1) {
+      for (let col = 0; col < RESERVE_COLS; col += 1) {
+        const pig = this.reserveColumns[col]?.[row];
+        if (pig) {
+          entries.push({ pig, index: row * RESERVE_COLS + col, row, col });
+        }
+      }
+    }
+    return entries;
+  }
+
+  private reserveCount(): number {
+    return this.reserveColumns.reduce((sum, column) => sum + column.length, 0);
+  }
+
   private reservePosition(index: number): { x: number; y: number } {
     const col = index % RESERVE_COLS;
     const row = Math.floor(index / RESERVE_COLS);
     return { x: 320 + col * 220, y: 1538 + row * 148 };
   }
 
-  private faceCenter(active: ResolvingShooter): void {
-    active.body.setRotation(Phaser.Math.Angle.Between(active.container.x, active.container.y, this.center.x, this.center.y) + Math.PI / 2);
+  private faceTrackSide(active: ResolvingShooter, side = active.currentSide): void {
+    active.currentSide = side;
+    const rotations: Record<Side, number> = {
+      bottom: 0,
+      left: Math.PI / 2,
+      top: Math.PI,
+      right: -Math.PI / 2,
+    };
+    active.body.setRotation(rotations[side]);
   }
 
   private updateProgressText(): void {
@@ -1089,16 +1182,18 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_BLOCKS_LEFT__ = this.totalCells - this.clearedCells;
     window.__RPIXEL_SLOTS_FILLED__ = this.slots.filter(Boolean).length;
     window.__RPIXEL_STUCK_SLOTS__ = this.slots.filter((slot) => slot?.status === 'stuck').length;
-    window.__RPIXEL_RESERVE_LEFT__ = this.reserve.length;
-    window.__RPIXEL_LOCKED_RESERVE__ = this.reserve.slice(0, RESERVE_VISIBLE).filter((pig, index) => this.isReserveLocked(pig, index)).length;
+    window.__RPIXEL_RESERVE_LEFT__ = this.reserveCount();
+    const visibleReserve = this.visibleReserveEntries();
+    window.__RPIXEL_LOCKED_RESERVE__ = visibleReserve.filter((entry) => this.isReserveLocked(entry)).length;
     window.__RPIXEL_TREASURE_UNLOCKED__ = Boolean(this.treasure?.unlocked);
     window.__RPIXEL_COINS__ = this.coins;
     window.__RPIXEL_BOARD_COLOR_COUNTS__ = this.countInitialBoardColors();
     window.__RPIXEL_AMMO_COLOR_TOTALS__ = this.countInitialAmmoTotals();
-    window.__RPIXEL_VISIBLE_RESERVE__ = this.reserve.slice(0, RESERVE_VISIBLE).map((pig, index) => {
-      const position = this.reservePosition(index);
-      return { index, color: pig.color, locked: this.isReserveLocked(pig, index), x: position.x, y: position.y };
+    window.__RPIXEL_VISIBLE_RESERVE__ = visibleReserve.map((entry) => {
+      const position = this.reservePosition(entry.index);
+      return { index: entry.index, row: entry.row, col: entry.col, id: entry.pig.id, color: entry.pig.color, locked: this.isReserveLocked(entry), x: position.x, y: position.y };
     });
+    window.__RPIXEL_SHOT_LOG__ = [...this.shotLog];
     this.publishActiveShooterDebug();
     window.__RPIXEL_EXPOSED_COLORS__ = this.getExposedColors();
   }
@@ -1111,6 +1206,9 @@ export class GameScene extends Phaser.Scene {
       x: Math.round(active.container.x),
       y: Math.round(active.container.y),
       orbiting: active.orbiting,
+      side: active.currentSide,
+      rotation: Number(active.body.rotation.toFixed(3)),
+      pendingShots: active.pendingShots,
     }));
   }
 
