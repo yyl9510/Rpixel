@@ -4,7 +4,7 @@
 - branch: work/20260531-133001-405769-precise-center-ammo-and-capacity-labels
 - branch_slug: work__20260531-133001-405769-precise-center-ammo-and-capacity-labels
 - created_utc: 2026-05-31T13:30:02Z
-- status: active
+- status: complete
 
 ## Description
 用户再次反馈：小怪中间数字仍然没放到小怪中心，场上 0-5 容量数字也没有放到显示区域中心。需要按实际视觉/坐标精确修正数字中心位置，并验证。
@@ -44,9 +44,12 @@
 - Changed files: `src/game/scenes/GameScene.ts`, `src/main.ts`, `tests/smoke.spec.ts`.
 - Validation: `npm run check` passed; `npm run test:smoke` passed 8/8; `git diff --check` passed.
 - Local visual/debug evidence: `/tmp/rpixel-label-center-current.png` captured the pre-fix state; `/tmp/rpixel-label-center-fixed.png` captured the bounds-centered result. Debug output showed all six reserve labels with `deltaX: 0` and `deltaY: 0`; capacity bounds centered at the pill center within rounding.
+- Main merge/deploy: merged to `main` at `677d51b`, pushed to `origin/main`, GitHub Pages workflow `26714149495` completed with `success`, and online sanity check passed at `https://yyl9510.github.io/Rpixel/?v=677d51b`. Online debug showed all six reserve labels with `deltaX: 0`/`deltaY: 0` and capacity text centered within 1 game unit.
 
 ## Steps
 - 2026-05-31T13:30:02Z: task created
 - 2026-05-31T13:35:22Z: Implement bounds-based centering for ammo and capacity labels
 - 2026-05-31T13:35:43Z: Precisely center ammo and capacity labels
   - pushed_commit: 99a5ad7
+- 2026-05-31T13:41:14Z: Verify deployed label centers and mark task complete
+- 2026-05-31T13:41:49Z: Record deployed label center verification
