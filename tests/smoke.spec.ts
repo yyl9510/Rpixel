@@ -7,6 +7,9 @@ interface CanvasBox {
   height: number;
 }
 
+const SPEED_TOGGLE_X = 214;
+const SPEED_TOGGLE_Y = 82;
+
 test.beforeEach(async ({ page }) => {
   await page.goto('./');
   await page.evaluate(() => window.localStorage.clear());
@@ -33,11 +36,6 @@ async function visibleWaiting(page: Page) {
 
 function modularDelta(from: number, to: number, modulo: number) {
   return ((to - from) % modulo + modulo) % modulo;
-}
-
-function circularDifference(a: number, b: number, modulo: number) {
-  const difference = Math.abs(a - b);
-  return Math.min(difference, modulo - difference);
 }
 
 test('loads the menu and launches shooters through the waiting area', async ({ page }) => {
@@ -201,8 +199,10 @@ test('speed toggle switches active shooters from 1x to 5x', async ({ page }) => 
     spacing: window.__RPIXEL_CONVEYOR_PLATE_SPACING__ ?? 78,
     trackSpeed: window.__RPIXEL_TRACK_SPEED__ ?? 0,
     conveyorSpeed: window.__RPIXEL_CONVEYOR_SCROLL_SPEED__ ?? -1,
+    effectiveConveyorSpeed: window.__RPIXEL_CONVEYOR_EFFECTIVE_SCROLL_SPEED__ ?? -1,
   }));
-  expect(start1x.conveyorSpeed).toBe(start1x.trackSpeed);
+  expect(start1x.conveyorSpeed).toBeLessThan(start1x.trackSpeed);
+  expect(start1x.effectiveConveyorSpeed).toBe(start1x.conveyorSpeed);
   await page.waitForTimeout(160);
   const end1x = await page.evaluate(() => ({
     distance: (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? [])[0]?.distance ?? 0,
@@ -210,15 +210,18 @@ test('speed toggle switches active shooters from 1x to 5x', async ({ page }) => 
   }));
   const delta1x = end1x.distance - start1x.distance;
   expect(delta1x).toBeGreaterThan(70);
-  expect(circularDifference(modularDelta(start1x.offset, end1x.offset, start1x.spacing), modularDelta(0, delta1x, start1x.spacing), start1x.spacing)).toBeLessThan(14);
+  expect(modularDelta(start1x.offset, end1x.offset, start1x.spacing)).toBeGreaterThan(12);
 
-  await clickGame(page, box, 934, 190);
+  await clickGame(page, box, SPEED_TOGGLE_X, SPEED_TOGGLE_Y);
   await page.waitForFunction(() => window.__RPIXEL_SPEED_MULTIPLIER__ === 5);
   const start5x = await page.evaluate(() => ({
     distance: (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? [])[0]?.distance ?? 0,
     offset: window.__RPIXEL_CONVEYOR_OFFSET__ ?? 0,
     spacing: window.__RPIXEL_CONVEYOR_PLATE_SPACING__ ?? 78,
+    effectiveConveyorSpeed: window.__RPIXEL_CONVEYOR_EFFECTIVE_SCROLL_SPEED__ ?? 0,
+    trackSpeed: window.__RPIXEL_TRACK_SPEED__ ?? 0,
   }));
+  expect(start5x.effectiveConveyorSpeed).toBeLessThan(start5x.trackSpeed);
   await page.waitForTimeout(160);
   const end5x = await page.evaluate(() => ({
     distance: (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? [])[0]?.distance ?? 0,
@@ -226,7 +229,7 @@ test('speed toggle switches active shooters from 1x to 5x', async ({ page }) => 
   }));
   const delta5x = end5x.distance - start5x.distance;
   expect(delta5x).toBeGreaterThan(delta1x * 3);
-  expect(circularDifference(modularDelta(start5x.offset, end5x.offset, start5x.spacing), modularDelta(0, delta5x, start5x.spacing), start5x.spacing)).toBeLessThan(18);
+  expect(modularDelta(start5x.offset, end5x.offset, start5x.spacing)).toBeGreaterThan(20);
 });
 
 test('keeps waiting slots left-packed when any waiting shooter launches', async ({ page }) => {
@@ -240,7 +243,7 @@ test('keeps waiting slots left-packed when any waiting shooter launches', async 
 
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.8);
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'game');
-  await clickGame(page, box, 934, 190);
+  await clickGame(page, box, SPEED_TOGGLE_X, SPEED_TOGGLE_Y);
   await page.waitForFunction(() => window.__RPIXEL_SPEED_MULTIPLIER__ === 5);
 
   for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -272,7 +275,7 @@ test('keeps waiting slots left-packed when any waiting shooter launches', async 
   const before = (await visibleWaiting(page)).filter((item) => item.status === 'stuck').sort((a, b) => a.index - b.index);
   expect(before.map((item) => item.index)).toEqual([0, 1, 2]);
 
-  await clickGame(page, box, 934, 190);
+  await clickGame(page, box, SPEED_TOGGLE_X, SPEED_TOGGLE_Y);
   await page.waitForFunction(() => window.__RPIXEL_SPEED_MULTIPLIER__ === 1);
   await page.waitForTimeout(100);
   await clickGame(page, box, before[1].x, before[1].y);
@@ -296,7 +299,7 @@ test('edge hit zones launch all first-row reserve columns and every waiting slot
 
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.8);
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'game');
-  await clickGame(page, box, 934, 190);
+  await clickGame(page, box, SPEED_TOGGLE_X, SPEED_TOGGLE_Y);
   await page.waitForFunction(() => window.__RPIXEL_SPEED_MULTIPLIER__ === 5);
 
   const initialTop = (await visibleReserve(page)).filter((item) => !item.locked).sort((a, b) => a.col - b.col);
@@ -344,7 +347,7 @@ test('edge hit zones launch all first-row reserve columns and every waiting slot
     undefined,
     { timeout: 14_000 },
   );
-  await clickGame(page, box, 934, 190);
+  await clickGame(page, box, SPEED_TOGGLE_X, SPEED_TOGGLE_Y);
   await page.waitForFunction(() => window.__RPIXEL_SPEED_MULTIPLIER__ === 1);
   const waiting = (await visibleWaiting(page)).filter((item) => item.status === 'stuck').sort((a, b) => b.index - a.index);
   expect(waiting.map((item) => item.index)).toEqual([4, 3, 2, 1, 0]);
@@ -443,7 +446,7 @@ test('fails only when a returning shooter would overflow five waiting slots', as
 
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.8);
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'game');
-  await clickGame(page, box, 934, 190);
+  await clickGame(page, box, SPEED_TOGGLE_X, SPEED_TOGGLE_Y);
   await page.waitForFunction(() => window.__RPIXEL_SPEED_MULTIPLIER__ === 5);
 
   for (let attempt = 0; attempt < 14; attempt += 1) {
@@ -498,7 +501,7 @@ test('can complete the level, unlock treasure, and show the win panel', async ({
 
   await clickAt(540, 1535);
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'game');
-  await clickAt(934, 190);
+  await clickAt(SPEED_TOGGLE_X, SPEED_TOGGLE_Y);
   await page.waitForFunction(() => window.__RPIXEL_SPEED_MULTIPLIER__ === 5);
 
   for (let step = 0; step < 520; step += 1) {

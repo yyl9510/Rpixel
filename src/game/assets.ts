@@ -39,8 +39,8 @@ function createBlockTexture(scene: Phaser.Scene, color: PigColor, style: ColorSt
   const size = 82;
   const depth = 24;
 
-  g.fillStyle(0x050915, 0.38);
-  g.fillEllipse(68, 106, 110, 34);
+  g.fillStyle(0x050915, 0.46);
+  g.fillEllipse(70, 108, 114, 36);
   g.fillStyle(style.dark, 1);
   g.fillPoints(
     [
@@ -51,7 +51,7 @@ function createBlockTexture(scene: Phaser.Scene, color: PigColor, style: ColorSt
     ],
     true,
   );
-  g.fillStyle(style.dark, 0.86);
+  g.fillStyle(style.dark, 0.9);
   g.fillPoints(
     [
       new Phaser.Geom.Point(topX + size - 4, topY + 10),
@@ -65,13 +65,17 @@ function createBlockTexture(scene: Phaser.Scene, color: PigColor, style: ColorSt
   g.fillStyle(style.base, 1);
   g.fillRoundedRect(topX, topY, size, size, 16);
   g.strokeRoundedRect(topX, topY, size, size, 16);
-  g.fillStyle(style.light, 0.72);
-  g.fillRoundedRect(topX + 10, topY + 8, 54, 16, 8);
-  g.fillStyle(0xffffff, color === 'white' ? 0.44 : 0.26);
-  g.fillRoundedRect(topX + 13, topY + 31, 62, 10, 5);
-  g.lineStyle(3, 0xffffff, 0.34);
+  g.fillStyle(0xffffff, color === 'white' ? 0.2 : 0.08);
+  g.fillRoundedRect(topX + 6, topY + 6, size - 12, size - 12, 14);
+  g.fillStyle(style.light, 0.78);
+  g.fillRoundedRect(topX + 10, topY + 8, 54, 15, 8);
+  g.fillStyle(0xffffff, color === 'white' ? 0.5 : 0.3);
+  g.fillRoundedRect(topX + 13, topY + 31, 62, 9, 5);
+  g.fillStyle(style.dark, 0.24);
+  g.fillRoundedRect(topX + 8, topY + size - 21, size - 16, 14, 7);
+  g.lineStyle(3, 0xffffff, 0.38);
   g.strokeRoundedRect(topX + 9, topY + 8, size - 18, size - 18, 12);
-  g.lineStyle(2, 0x050915, 0.22);
+  g.lineStyle(2, 0x050915, 0.28);
   g.lineBetween(topX + 2, topY + size - 10, topX + size - 6, topY + size - 10);
   g.generateTexture(`block-${color}`, 128, 128);
   g.destroy();
@@ -125,38 +129,45 @@ function createPigTexture(scene: Phaser.Scene, color: PigColor, style: ColorStyl
 
 function createShooterTexture(scene: Phaser.Scene, color: PigColor, style: ColorStyle): void {
   const g = scene.add.graphics();
-  g.fillStyle(0x050915, 0.42);
-  g.fillEllipse(82, 127, 138, 44);
+  g.fillStyle(0x050915, 0.5);
+  g.fillEllipse(82, 129, 146, 48);
 
   g.lineStyle(8, 0x050915, 1);
   g.fillStyle(style.dark, 1);
-  g.fillCircle(27, 78, 20);
-  g.strokeCircle(27, 78, 20);
-  g.fillCircle(137, 78, 20);
-  g.strokeCircle(137, 78, 20);
+  g.fillRoundedRect(12, 62, 32, 58, 16);
+  g.strokeRoundedRect(12, 62, 32, 58, 16);
+  g.fillRoundedRect(120, 62, 32, 58, 16);
+  g.strokeRoundedRect(120, 62, 32, 58, 16);
+  g.fillStyle(style.light, 0.28);
+  g.fillRoundedRect(20, 68, 13, 33, 7);
+  g.fillRoundedRect(131, 68, 13, 33, 7);
 
   g.fillStyle(0x050915, 1);
-  g.fillRoundedRect(49, 16, 24, 34, 10);
-  g.fillRoundedRect(91, 16, 24, 34, 10);
+  g.fillRoundedRect(48, 14, 26, 38, 11);
+  g.fillRoundedRect(90, 14, 26, 38, 11);
   g.fillStyle(style.light, 0.95);
-  g.fillRoundedRect(54, 19, 16, 22, 7);
-  g.fillRoundedRect(96, 19, 16, 22, 7);
+  g.fillRoundedRect(54, 18, 16, 25, 7);
+  g.fillRoundedRect(96, 18, 16, 25, 7);
 
   g.fillStyle(style.dark, 1);
-  g.fillRoundedRect(21, 31, 122, 113, 34);
-  g.strokeRoundedRect(21, 31, 122, 113, 34);
+  g.fillRoundedRect(18, 31, 128, 116, 36);
+  g.strokeRoundedRect(18, 31, 128, 116, 36);
   g.fillStyle(style.base, 1);
-  g.fillRoundedRect(31, 23, 102, 112, 34);
-  g.strokeRoundedRect(31, 23, 102, 112, 34);
-  g.fillStyle(style.light, 0.68);
-  g.fillRoundedRect(43, 33, 62, 21, 11);
-  g.fillStyle(0xffffff, color === 'white' ? 0.36 : 0.24);
-  g.fillRoundedRect(47, 62, 70, 13, 7);
+  g.fillRoundedRect(30, 23, 104, 114, 35);
+  g.strokeRoundedRect(30, 23, 104, 114, 35);
+  g.fillStyle(style.light, 0.74);
+  g.fillRoundedRect(43, 33, 64, 21, 11);
+  g.fillStyle(0xffffff, color === 'white' ? 0.42 : 0.26);
+  g.fillRoundedRect(45, 61, 74, 12, 7);
+  g.fillStyle(0xffffff, color === 'white' ? 0.2 : 0.1);
+  g.fillRoundedRect(40, 80, 84, 38, 19);
+  g.fillStyle(style.dark, 0.38);
+  g.fillRoundedRect(42, 114, 80, 18, 9);
 
-  g.lineStyle(8, style.dark, 0.95);
-  g.lineBetween(61, 52, 61, 116);
-  g.lineBetween(103, 52, 103, 116);
-  g.lineStyle(4, 0xffffff, 0.48);
+  g.lineStyle(7, style.dark, 0.84);
+  g.lineBetween(58, 50, 58, 121);
+  g.lineBetween(106, 50, 106, 121);
+  g.lineStyle(4, 0xffffff, 0.5);
   g.lineBetween(70, 48, 94, 48);
   g.lineBetween(70, 62, 94, 62);
 
@@ -169,10 +180,10 @@ function createShooterTexture(scene: Phaser.Scene, color: PigColor, style: Color
 
   g.lineStyle(8, 0x050915, 1);
   g.fillStyle(0xf7fbff, 0.94);
-  g.fillCircle(82, 118, 12);
-  g.strokeCircle(82, 118, 12);
+  g.fillCircle(82, 123, 12);
+  g.strokeCircle(82, 123, 12);
   g.lineStyle(4, 0x050915, 1);
-  g.lineBetween(74, 124, 90, 124);
+  g.lineBetween(74, 129, 90, 129);
 
   g.fillStyle(style.dark, 1);
   g.fillRoundedRect(44, 132, 22, 18, 9);
