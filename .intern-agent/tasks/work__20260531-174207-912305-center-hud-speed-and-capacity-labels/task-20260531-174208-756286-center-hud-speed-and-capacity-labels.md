@@ -4,7 +4,7 @@
 - branch: work/20260531-174207-912305-center-hud-speed-and-capacity-labels
 - branch_slug: work__20260531-174207-912305-center-hud-speed-and-capacity-labels
 - created_utc: 2026-05-31T17:42:08Z
-- status: active
+- status: complete
 
 ## Description
 User provided screenshot showing top HUD labels are not visually centered: the speed toggle value (1x/5x) and active capacity label (0-5/5-5) sit off-center. Fix their visual centering, add debug evidence/tests, validate, push, merge, and verify GitHub Pages.
@@ -32,12 +32,18 @@ User provided screenshot showing top HUD labels are not visually centered: the s
 - Do not restart daemon or unrelated agents.
 
 ### Claimed Output
-- TODO: fill when reporting completion.
+- Added a shared HUD optical offset so the speed toggle value and active-capacity value are positioned on their visible center rather than the font baseline center.
+- Added debug bounds/targets for the speed and capacity labels.
+- Updated smoke coverage to assert both labels are centered on their intended optical targets while staying inside the capacity pill.
 
 ### Artifacts And Evidence
-- TODO: fill with changed files, commits, generated artifacts, logs, screenshots, or test output.
+- Changed files: `src/game/scenes/GameScene.ts`, `src/main.ts`, `tests/smoke.spec.ts`.
+- Validation passed: `npm run check`.
+- Validation passed: `npm run test:smoke` (8/8 Playwright tests).
+- Local visual sanity: `/tmp/rpixel-centered-hud-full.png` showed `1x` and `0-5` moved upward into their capsules compared with the user's screenshot.
 
 ## Steps
 - 2026-05-31T17:42:08Z: task created
 - 2026-05-31T17:47:04Z: Center HUD speed and capacity labels
   - pushed_commit: 5fd76f0
+- 2026-05-31T17:47:34Z: Record HUD label centering validation
