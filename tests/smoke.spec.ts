@@ -31,6 +31,15 @@ async function visibleWaiting(page: Page) {
   return page.evaluate(() => window.__RPIXEL_VISIBLE_WAITING__ ?? []);
 }
 
+function modularDelta(from: number, to: number, modulo: number) {
+  return ((to - from) % modulo + modulo) % modulo;
+}
+
+function circularDifference(a: number, b: number, modulo: number) {
+  const difference = Math.abs(a - b);
+  return Math.min(difference, modulo - difference);
+}
+
 test('loads the menu and launches shooters through the waiting area', async ({ page }) => {
   await page.reload();
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'menu');
@@ -77,11 +86,15 @@ test('loads the menu and launches shooters through the waiting area', async ({ p
   expect(balance.shooterAmmo.length).toBeGreaterThan(0);
   expect(balance.shooterAmmo.every((value) => value > 0 && value % 5 === 0)).toBe(true);
 
-  const conveyorStart = await page.evaluate(() => ({ offset: window.__RPIXEL_CONVEYOR_OFFSET__ ?? 0, markers: window.__RPIXEL_CONVEYOR_MARKERS__ ?? 0 }));
+  const conveyorStart = await page.evaluate(() => ({
+    offset: window.__RPIXEL_CONVEYOR_OFFSET__ ?? 0,
+    markers: window.__RPIXEL_CONVEYOR_MARKERS__ ?? 0,
+    spacing: window.__RPIXEL_CONVEYOR_PLATE_SPACING__ ?? 78,
+  }));
   expect(conveyorStart.markers).toBeGreaterThan(20);
   await page.waitForTimeout(260);
   const conveyorEnd = await page.evaluate(() => window.__RPIXEL_CONVEYOR_OFFSET__ ?? 0);
-  expect(Math.abs(conveyorEnd - conveyorStart.offset)).toBeGreaterThan(20);
+  expect(modularDelta(conveyorStart.offset, conveyorEnd, conveyorStart.spacing)).toBeGreaterThan(10);
 
   const shape = await page.evaluate(() => window.__RPIXEL_BOARD_SHAPE__);
   expect(shape?.empty).toBeGreaterThan(30);
@@ -182,19 +195,38 @@ test('speed toggle switches active shooters from 1x to 5x', async ({ page }) => 
   await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? [])[0]?.orbiting === true, undefined, { timeout: 10_000 });
   await page.waitForTimeout(120);
 
-  const start1x = await page.evaluate(() => (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? [])[0]?.distance ?? 0);
+  const start1x = await page.evaluate(() => ({
+    distance: (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? [])[0]?.distance ?? 0,
+    offset: window.__RPIXEL_CONVEYOR_OFFSET__ ?? 0,
+    spacing: window.__RPIXEL_CONVEYOR_PLATE_SPACING__ ?? 78,
+    trackSpeed: window.__RPIXEL_TRACK_SPEED__ ?? 0,
+    conveyorSpeed: window.__RPIXEL_CONVEYOR_SCROLL_SPEED__ ?? -1,
+  }));
+  expect(start1x.conveyorSpeed).toBe(start1x.trackSpeed);
   await page.waitForTimeout(160);
-  const end1x = await page.evaluate(() => (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? [])[0]?.distance ?? 0);
-  const delta1x = end1x - start1x;
+  const end1x = await page.evaluate(() => ({
+    distance: (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? [])[0]?.distance ?? 0,
+    offset: window.__RPIXEL_CONVEYOR_OFFSET__ ?? 0,
+  }));
+  const delta1x = end1x.distance - start1x.distance;
   expect(delta1x).toBeGreaterThan(70);
+  expect(circularDifference(modularDelta(start1x.offset, end1x.offset, start1x.spacing), modularDelta(0, delta1x, start1x.spacing), start1x.spacing)).toBeLessThan(14);
 
   await clickGame(page, box, 934, 190);
   await page.waitForFunction(() => window.__RPIXEL_SPEED_MULTIPLIER__ === 5);
-  const start5x = await page.evaluate(() => (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? [])[0]?.distance ?? 0);
+  const start5x = await page.evaluate(() => ({
+    distance: (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? [])[0]?.distance ?? 0,
+    offset: window.__RPIXEL_CONVEYOR_OFFSET__ ?? 0,
+    spacing: window.__RPIXEL_CONVEYOR_PLATE_SPACING__ ?? 78,
+  }));
   await page.waitForTimeout(160);
-  const end5x = await page.evaluate(() => (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? [])[0]?.distance ?? 0);
-  const delta5x = end5x - start5x;
+  const end5x = await page.evaluate(() => ({
+    distance: (window.__RPIXEL_ACTIVE_SHOOTERS__ ?? [])[0]?.distance ?? 0,
+    offset: window.__RPIXEL_CONVEYOR_OFFSET__ ?? 0,
+  }));
+  const delta5x = end5x.distance - start5x.distance;
   expect(delta5x).toBeGreaterThan(delta1x * 3);
+  expect(circularDifference(modularDelta(start5x.offset, end5x.offset, start5x.spacing), modularDelta(0, delta5x, start5x.spacing), start5x.spacing)).toBeLessThan(18);
 });
 
 test('keeps waiting slots left-packed when any waiting shooter launches', async ({ page }) => {
@@ -319,7 +351,7 @@ test('edge hit zones launch all first-row reserve columns and every waiting slot
 
   for (const shooter of waiting) {
     await clickGame(page, box, shooter.x + 78, shooter.y + 12);
-    await page.waitForTimeout(120);
+    await page.waitForTimeout(35);
   }
 
   await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 5 && (window.__RPIXEL_SLOTS_FILLED__ ?? 0) === 0, undefined, { timeout: 10_000 });
