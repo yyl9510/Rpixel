@@ -4,7 +4,7 @@
 - branch: work/20260531-074412-704049-premium-visual-polish-and-ui-layout-refinement
 - branch_slug: work__20260531-074412-704049-premium-visual-polish-and-ui-layout-refinement
 - created_utc: 2026-05-31T07:44:13Z
-- status: active
+- status: complete
 
 ## Description
 User feedback: slow down the conveyor visual so it reads as a belt without racing; improve overall premium/high-quality look with shadows and material feel; make shooters larger and more polished; redesign shooter ammo number so it sits centered inside the shooter instead of oversized/right-low; move 0-5 active capacity label so reserve area does not cover it; move 1x/5x speed toggle next to the top-left settings instead of overlapping the board. Keep gameplay logic intact, validate, push and deploy.
@@ -52,8 +52,12 @@ User feedback: slow down the conveyor visual so it reads as a belt without racin
 - `npm run test:smoke` passed: 8/8 Playwright tests.
 - `git diff --check` passed.
 - Local screenshot/sanity passed: `test-results/premium-visual-polish-game.png`, scene `game`, track speed `820`, conveyor speed `220`, active capacity `1-5`, 51 conveyor markers.
+- Merged to `main` at `0cce30c`, GitHub Pages Action `26707030459` completed successfully.
+- Online sanity passed at `https://yyl9510.github.io/Rpixel/?v=0cce30c`: scene `game`, track speed `820`, conveyor speed `220`, 51 conveyor markers, belt delta `40.27` over 300ms, speed toggle at `(214, 82)`, board/ammo totals matched.
 
 ## Steps
 - 2026-05-31T07:44:13Z: task created
 - 2026-05-31T07:52:32Z: Polish premium visuals and UI placement
   - pushed_commit: 024e44c
+- 2026-05-31T07:57:07Z: completed - Complete premium visual polish and UI placement
+  - pushed_commit: 4adfabd
