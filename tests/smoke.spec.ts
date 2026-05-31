@@ -229,7 +229,7 @@ test('speed toggle switches active shooters from 1x to 5x', async ({ page }) => 
   }));
   const delta5x = end5x.distance - start5x.distance;
   expect(delta5x).toBeGreaterThan(delta1x * 3);
-  expect(modularDelta(start5x.offset, end5x.offset, start5x.spacing)).toBeGreaterThan(20);
+  expect(modularDelta(start5x.offset, end5x.offset, start5x.spacing)).toBeGreaterThan(14);
 });
 
 test('keeps waiting slots left-packed when any waiting shooter launches', async ({ page }) => {

@@ -14,13 +14,14 @@ const SLOT_Y = 1360;
 const RESERVE_VISIBLE = 9;
 const RESERVE_COLS = 3;
 const TRACK_SPEED = 820;
-const CONVEYOR_SCROLL_SPEED = 220;
-const CONVEYOR_FAST_MULTIPLIER = 1.7;
-const CONVEYOR_PLATE_SPACING = 78;
-const TRANSFER_PLATE_SPACING = 48;
-const TRACK_SHOOTER_SCALE = 0.82;
-const WAITING_SHOOTER_SCALE = 0.78;
+const CONVEYOR_SCROLL_SPEED = 96;
+const CONVEYOR_FAST_MULTIPLIER = 1.35;
+const CONVEYOR_PLATE_SPACING = 62;
+const TRANSFER_PLATE_SPACING = 62;
+const TRACK_SHOOTER_SCALE = 0.9;
+const WAITING_SHOOTER_SCALE = 0.84;
 const SPEED_TOGGLE_POSITION = { x: 214, y: 82 };
+const CAPACITY_LABEL_POSITION = { x: 328, y: 82 };
 const MANUAL_LAUNCH_HIT_RADIUS = 108;
 const RESERVE_HIT_WIDTH = 206;
 const RESERVE_HIT_HEIGHT = 178;
@@ -221,6 +222,14 @@ export class GameScene extends Phaser.Scene {
     graphics.fillRoundedRect(42, 190, 996, 1070, 46);
     graphics.fillStyle(0x071122, 0.16);
     graphics.fillRoundedRect(74, 248, 932, 1010, 44);
+    graphics.fillStyle(0xffffff, 0.055);
+    graphics.fillCircle(256, 356, 270);
+    graphics.fillStyle(0xffd86b, 0.04);
+    graphics.fillCircle(852, 1128, 360);
+    graphics.fillStyle(0x050915, 0.22);
+    graphics.fillRoundedRect(86, 1288, 908, 518, 58);
+    graphics.lineStyle(4, 0xffffff, 0.07);
+    graphics.strokeRoundedRect(94, 1296, 892, 502, 52);
     graphics.lineStyle(3, 0xffffff, 0.045);
     for (let y = 240; y < 1260; y += 68) {
       graphics.lineBetween(84, y, 996, y - 42);
@@ -254,6 +263,7 @@ export class GameScene extends Phaser.Scene {
     this.addRoundRect(968, 82, 84, 78, 18, 0xffb43d, 1, 0x6b3b00, 6);
     this.add.text(943, 40, '+', this.textStyle(65)).setStroke('#9a5200', 8);
     this.drawSpeedToggle();
+    this.drawActiveCapacityPill();
 
     this.progressFill = this.add.graphics().setDepth(4);
     this.blocksLeftText = this.add.text(540, 134, '', this.textStyle(18)).setOrigin(0.5, 0).setAlpha(0);
@@ -262,14 +272,27 @@ export class GameScene extends Phaser.Scene {
 
   private drawSpeedToggle(): void {
     const container = this.add.container(SPEED_TOGGLE_POSITION.x, SPEED_TOGGLE_POSITION.y).setDepth(52);
-    const shadow = this.add.ellipse(3, 9, 132, 54, 0x050915, 0.28);
-    const background = this.makeRoundRect(118, 64, 20, 0x27304b, 0.96, 0x050915, 6, 1);
-    const rim = this.makeRoundRect(100, 48, 16, 0x10172c, 0.92, 0xdce7ff, 4, 0.74);
-    const gloss = this.makeRoundRect(80, 15, 8, 0xffffff, 0.2, undefined, 0, 1, -4, -16);
-    this.speedToggleText = this.add.text(0, -24, '1x', this.textStyle(35)).setOrigin(0.5, 0).setStroke('#06101f', 8);
-    const hit = this.add.zone(0, 0, 136, 82).setInteractive({ useHandCursor: true });
+    const shadow = this.add.ellipse(3, 10, 116, 48, 0x050915, 0.34);
+    const background = this.makeRoundRect(104, 60, 20, 0x202845, 0.98, 0x050915, 6, 1);
+    const rim = this.makeRoundRect(86, 42, 15, 0x39456c, 0.98, 0xdce7ff, 4, 0.68);
+    const gloss = this.makeRoundRect(62, 12, 7, 0xffffff, 0.22, undefined, 0, 1, -3, -15);
+    this.speedToggleText = this.add.text(0, -21, '1x', this.textStyle(32)).setOrigin(0.5, 0).setStroke('#06101f', 7);
+    const hit = this.add.zone(0, 0, 112, 76).setInteractive({ useHandCursor: true });
     hit.on('pointerdown', () => this.toggleSpeedMultiplier());
     container.add([shadow, background, rim, gloss, this.speedToggleText, hit]);
+  }
+
+  private drawActiveCapacityPill(): void {
+    const container = this.add.container(CAPACITY_LABEL_POSITION.x, CAPACITY_LABEL_POSITION.y).setDepth(52);
+    container.add(this.add.ellipse(2, 10, 96, 42, 0x050915, 0.32));
+    container.add(this.makeRoundRect(90, 54, 18, 0x11192e, 0.96, 0x050915, 5, 1));
+    container.add(this.makeRoundRect(72, 36, 13, 0x2e3a5f, 0.98, 0xe8f1ff, 3, 0.58));
+    container.add(this.add.circle(-29, 0, 6, 0x35c95f, 0.95).setStrokeStyle(2, 0x050915, 0.9));
+    container.add(this.add.circle(29, 0, 6, 0x8ea0cf, 0.95).setStrokeStyle(2, 0x050915, 0.9));
+    container.add(this.makeRoundRect(48, 9, 5, 0xffffff, 0.17, undefined, 0, 1, -4, -13));
+    this.activeCapacityText = this.add.text(0, -15, `0-${SLOT_CAPACITY}`, this.textStyle(25)).setOrigin(0.5, 0).setStroke('#050915', 5);
+    this.activeCapacityText.setResolution(2);
+    container.add(this.activeCapacityText);
   }
 
   private toggleSpeedMultiplier(): void {
@@ -406,16 +429,18 @@ export class GameScene extends Phaser.Scene {
 
   private makeConveyorPlate(width: number, height: number): Phaser.GameObjects.Container {
     const container = this.add.container(0, 0);
+    container.add(this.makeRoundRect(width, height, Math.max(8, height * 0.42), 0xc7d4ff, 0.11, 0x050915, 2, 0.18));
+    container.add(this.makeRoundRect(width * 0.72, height * 0.42, Math.max(5, height * 0.2), 0xffffff, 0.08, undefined, 0, 1, -width * 0.04, -height * 0.18));
     const g = this.add.graphics();
-    g.lineStyle(Math.max(10, height * 0.46), 0x050915, 0.16);
-    g.lineBetween(-width * 0.25, -height * 0.36, width * 0.13, 0.5);
-    g.lineBetween(width * 0.13, 0.5, -width * 0.25, height * 0.36);
-    g.lineStyle(Math.max(8, height * 0.42), 0xa9b2df, 0.44);
-    g.lineBetween(-width * 0.28, -height * 0.42, width * 0.1, 0);
-    g.lineBetween(width * 0.1, 0, -width * 0.28, height * 0.42);
-    g.lineStyle(Math.max(3, height * 0.16), 0xf2f7ff, 0.28);
-    g.lineBetween(-width * 0.22, -height * 0.35, width * 0.02, 0);
-    g.lineBetween(width * 0.02, 0, -width * 0.22, height * 0.35);
+    g.lineStyle(Math.max(9, height * 0.4), 0x050915, 0.18);
+    g.lineBetween(-width * 0.28, -height * 0.36, width * 0.08, 0.5);
+    g.lineBetween(width * 0.08, 0.5, -width * 0.28, height * 0.36);
+    g.lineStyle(Math.max(7, height * 0.34), 0xb9c5f2, 0.58);
+    g.lineBetween(-width * 0.31, -height * 0.4, width * 0.05, 0);
+    g.lineBetween(width * 0.05, 0, -width * 0.31, height * 0.4);
+    g.lineStyle(Math.max(2, height * 0.12), 0xf7fbff, 0.38);
+    g.lineBetween(-width * 0.25, -height * 0.31, -width * 0.03, 0);
+    g.lineBetween(-width * 0.03, 0, -width * 0.25, height * 0.31);
     container.add(g);
     return container;
   }
@@ -435,7 +460,7 @@ export class GameScene extends Phaser.Scene {
       plate.container.setRotation(this.trackRotationFor(position.side));
     });
 
-    const phaseDelta = scroll / TRANSFER_PLATE_SPACING;
+    const phaseDelta = (scroll * 0.82) / TRANSFER_PLATE_SPACING;
     this.transferPlates.forEach((plate) => {
       plate.phase = (plate.phase + phaseDelta) % 1;
       plate.container.setPosition(Phaser.Math.Linear(plate.from.x, plate.to.x, plate.phase), Phaser.Math.Linear(plate.from.y, plate.to.y, plate.phase));
@@ -449,6 +474,7 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_CONVEYOR_EFFECTIVE_SCROLL_SPEED__ = CONVEYOR_SCROLL_SPEED * conveyorMultiplier;
     window.__RPIXEL_CONVEYOR_PLATE_SPACING__ = CONVEYOR_PLATE_SPACING;
     window.__RPIXEL_SPEED_TOGGLE_POSITION__ = SPEED_TOGGLE_POSITION;
+    window.__RPIXEL_CAPACITY_LABEL_POSITION__ = CAPACITY_LABEL_POSITION;
   }
 
   private transferUploadStart(): Phaser.Math.Vector2 {
@@ -504,10 +530,6 @@ export class GameScene extends Phaser.Scene {
     for (let line = 0; line < 8; line += 1) {
       this.slotChromeLayer.add(this.add.rectangle(44, this.track.bottom - 134 + line * 18, 100, 7, 0xffffff, 0.8).setStrokeStyle(1, 0x9aa7c8, 0.6));
     }
-    this.slotChromeLayer.add(this.makeRoundRect(126, 58, 18, 0x10172c, 0.92, 0xdce7ff, 4, 0.6, 120, this.track.bottom + 46));
-    this.slotChromeLayer.add(this.makeRoundRect(104, 24, 10, 0xffffff, 0.14, undefined, 0, 1, 114, this.track.bottom + 27));
-    this.activeCapacityText = this.add.text(120, this.track.bottom + 17, `0-${SLOT_CAPACITY}`, this.textStyle(40)).setOrigin(0.5, 0).setStroke('#050915', 10);
-    this.slotChromeLayer.add(this.activeCapacityText);
 
     for (let index = 0; index < SLOT_CAPACITY; index += 1) {
       const position = this.slotPosition(index);
@@ -522,12 +544,15 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.reserveLayer.removeAll(true);
-    this.reserveLayer.add(this.makeRoundRect(620, 430, 68, 0x2f3151, 0.32, undefined, 0, 1, 540, 1655));
+    this.reserveLayer.add(this.add.ellipse(540, 1690, 650, 360, 0x050915, 0.18));
+    this.reserveLayer.add(this.makeRoundRect(640, 432, 68, 0x151b32, 0.52, 0xffffff, 3, 0.08, 540, 1655));
+    this.reserveLayer.add(this.makeRoundRect(606, 398, 58, 0x3b4066, 0.26, 0x050915, 4, 0.28, 540, 1655));
+    this.reserveLayer.add(this.makeRoundRect(456, 22, 11, 0xffffff, 0.12, undefined, 0, 1, 520, 1465));
 
     this.visibleReserveEntries().forEach((entry) => {
       const position = this.reservePosition(entry.index);
       const locked = this.isReserveLocked(entry);
-      const token = this.createPigToken(entry.pig, position.x, position.y, 0.8, !locked, () => this.handleReserveClick(entry.index), false, false);
+      const token = this.createPigToken(entry.pig, position.x, position.y, 0.9, !locked, () => this.handleReserveClick(entry.index), false, false);
       token.container.setAlpha(locked ? 0.74 : 1);
       this.reserveLayer?.add(token.container);
     });
@@ -623,7 +648,7 @@ export class GameScene extends Phaser.Scene {
     const reservePosition = this.reservePosition(entry.index);
     const [pig] = this.reserveColumns[entry.col].splice(entry.row, 1);
     const launchingPig = { ...pig, mystery: false };
-    const token = this.createPigToken(launchingPig, reservePosition.x, reservePosition.y, 0.58, false, undefined, true, false);
+    const token = this.createPigToken(launchingPig, reservePosition.x, reservePosition.y, 0.68, false, undefined, true, false);
     token.container.setDepth(24);
 
     this.renderReserve();
@@ -679,7 +704,7 @@ export class GameScene extends Phaser.Scene {
       targets: active.container,
       x: uploadStart.x,
       y: uploadStart.y,
-      scale: 0.68,
+      scale: 0.72,
       duration: 170,
       ease: 'Sine.easeOut',
       onUpdate: () => this.faceTrackSide(active, 'bottom'),
@@ -760,7 +785,7 @@ export class GameScene extends Phaser.Scene {
     target.pending = true;
     active.pendingShots += 1;
     active.pig.ammo -= 1;
-    active.ammoText.setText(String(active.pig.ammo));
+    this.updateAmmoText(active.ammoText, active.pig.ammo);
     const exhausted = active.pig.ammo <= 0;
     this.shotLog.push({
       pigId: active.pig.id,
@@ -983,7 +1008,7 @@ export class GameScene extends Phaser.Scene {
       targets: active.container,
       x: exitStart.x,
       y: exitStart.y,
-      scale: 0.66,
+      scale: 0.72,
       duration: 90,
       ease: 'Quad.easeOut',
       onUpdate: () => this.faceTrackSide(active, 'bottom'),
@@ -992,7 +1017,7 @@ export class GameScene extends Phaser.Scene {
           targets: active.container,
           x: exitEnd.x,
           y: exitEnd.y,
-          scale: 0.66,
+          scale: 0.72,
           duration: 140,
           ease: 'Sine.easeInOut',
           onUpdate: () => this.faceTrackSide(active, 'bottom'),
@@ -1217,7 +1242,7 @@ export class GameScene extends Phaser.Scene {
     mystery = false,
   ): { container: Phaser.GameObjects.Container; body: Phaser.GameObjects.Container; ammoText: Phaser.GameObjects.Text } {
     const container = this.add.container(x, y).setScale(scale);
-    const shadow = this.add.ellipse(10, 24, 146, 64, 0x050915, 0.34);
+    const shadow = this.add.ellipse(10, 30, 166, 66, 0x050915, 0.42);
     const body = this.add.container(0, 0);
     const barrel = this.add.rectangle(0, -84, 30, 68, 0x242a3d).setStrokeStyle(5, 0x050915);
     const barrelTip = this.add.circle(0, -120, 18, 0x5c6684).setStrokeStyle(5, 0x050915);
@@ -1226,15 +1251,20 @@ export class GameScene extends Phaser.Scene {
 
     const image = mystery ? this.makeMysteryToken() : this.add.image(0, 0, `shooter-${pig.color}`);
     body.add([barrel, barrelTip, image]);
-    const ammoFontSize = mystery ? 42 : pig.ammo >= 100 ? 34 : pig.ammo >= 10 ? 40 : 44;
-    const badge = this.makeRoundRect(88, 54, 18, 0xffffff, 0.2, 0x050915, 5, 0.52, 0, -6);
-    const badgeGloss = this.makeRoundRect(62, 12, 6, 0xffffff, 0.28, undefined, 0, 1, -4, -26);
-    const ammoText = this.add.text(0, -34, mystery ? '?' : String(pig.ammo), this.textStyle(ammoFontSize)).setOrigin(0.5, 0).setStroke('#06101f', 8);
-    ammoText.setResolution(2);
+    const ammoFontSize = mystery ? 42 : this.ammoFontSize(pig.ammo);
+    const badgeBack = this.makeRoundRect(74, 44, 17, 0x050915, 0.25, undefined, 0, 1, 4, 4);
+    const badge = this.makeRoundRect(68, 40, 16, 0x11192e, 0.78, 0xfff1a6, 4, 0.76, 0, -2);
+    const badgeInner = this.makeRoundRect(52, 26, 12, 0xffffff, 0.12, 0xffffff, 2, 0.2, 0, -2);
+    const badgeGloss = this.makeRoundRect(36, 7, 4, 0xffffff, 0.25, undefined, 0, 1, -5, -16);
+    const ammoText = this.add.text(0, -3, mystery ? '?' : String(pig.ammo), this.textStyle(ammoFontSize)).setOrigin(0.5, 0.5).setStroke('#06101f', 4);
+    ammoText.setResolution(3);
+    ammoText.setShadow(0, 3, '#050915', 4, false, true);
     ammoText.setVisible(!mystery);
+    badgeBack.setVisible(!mystery);
     badge.setVisible(!mystery);
+    badgeInner.setVisible(!mystery);
     badgeGloss.setVisible(!mystery);
-    container.add([shadow, body, badge, badgeGloss, ammoText]);
+    container.add([shadow, body, badgeBack, badge, badgeInner, badgeGloss, ammoText]);
 
     if (interactive && onClick) {
       this.bindPigTokenClick(container, scale, onClick);
@@ -1243,10 +1273,25 @@ export class GameScene extends Phaser.Scene {
     return { container, body, ammoText };
   }
 
+  private ammoFontSize(ammo: number): number {
+    if (ammo >= 100) {
+      return 18;
+    }
+    if (ammo >= 10) {
+      return 22;
+    }
+    return 24;
+  }
+
+  private updateAmmoText(ammoText: Phaser.GameObjects.Text, ammo: number): void {
+    ammoText.setText(String(ammo));
+    ammoText.setFontSize(this.ammoFontSize(ammo));
+  }
+
   private bindPigTokenClick(container: Phaser.GameObjects.Container, scale: number, onClick: () => void): void {
     this.clearPigTokenClick(container);
-    container.setSize(158, 158);
-    container.setInteractive(new Phaser.Geom.Rectangle(-79, -79, 158, 158), Phaser.Geom.Rectangle.Contains);
+    container.setSize(178, 178);
+    container.setInteractive(new Phaser.Geom.Rectangle(-89, -89, 178, 178), Phaser.Geom.Rectangle.Contains);
     container.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       this.lastDirectPigPointerStamp = this.pointerEventStamp(pointer);
       this.tweens.add({ targets: container, scale: scale * 0.9, duration: 65, yoyo: true });
@@ -1685,6 +1730,7 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_CONVEYOR_EFFECTIVE_SCROLL_SPEED__ = CONVEYOR_SCROLL_SPEED * (this.speedMultiplier === 5 ? CONVEYOR_FAST_MULTIPLIER : 1);
     window.__RPIXEL_CONVEYOR_PLATE_SPACING__ = CONVEYOR_PLATE_SPACING;
     window.__RPIXEL_SPEED_TOGGLE_POSITION__ = SPEED_TOGGLE_POSITION;
+    window.__RPIXEL_CAPACITY_LABEL_POSITION__ = CAPACITY_LABEL_POSITION;
     window.__RPIXEL_BOARD_COLOR_COUNTS__ = this.countInitialBoardColors();
     window.__RPIXEL_AMMO_COLOR_TOTALS__ = this.countInitialAmmoTotals();
     window.__RPIXEL_ALL_SHOOTER_AMMO__ = FIRST_LEVEL.pigs.map((pig) => pig.ammo);
