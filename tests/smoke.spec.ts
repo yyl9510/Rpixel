@@ -9,6 +9,13 @@ interface CanvasBox {
 
 const SPEED_TOGGLE_X = 214;
 const SPEED_TOGGLE_Y = 82;
+const CAPACITY_PILL_CENTER_X = 330;
+const CAPACITY_PILL_CENTER_Y = 82;
+const CAPACITY_PILL_HALF_WIDTH = 59;
+const CAPACITY_PILL_HALF_HEIGHT = 29;
+const RESERVE_TOKEN_HALF_HEIGHT = (178 * 0.68) / 2;
+const BOOSTER_BAR_TOP_Y = 1812;
+const MIN_RESERVE_TOOLBAR_GAP = 48;
 
 test.beforeEach(async ({ page }) => {
   await page.goto('./');
@@ -70,8 +77,22 @@ test('loads the menu and launches shooters through the waiting area', async ({ p
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.8);
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'game');
   expect(await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL__)).toBe('0-5');
+  const capacityBounds = await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL_BOUNDS__);
+  expect(capacityBounds).toBeTruthy();
+  if (capacityBounds) {
+    expect(capacityBounds.left).toBeGreaterThanOrEqual(CAPACITY_PILL_CENTER_X - CAPACITY_PILL_HALF_WIDTH);
+    expect(capacityBounds.right).toBeLessThanOrEqual(CAPACITY_PILL_CENTER_X + CAPACITY_PILL_HALF_WIDTH);
+    expect(capacityBounds.top).toBeGreaterThanOrEqual(CAPACITY_PILL_CENTER_Y - CAPACITY_PILL_HALF_HEIGHT);
+    expect(capacityBounds.bottom).toBeLessThanOrEqual(CAPACITY_PILL_CENTER_Y + CAPACITY_PILL_HALF_HEIGHT);
+  }
   await page.waitForFunction(() => (window.__RPIXEL_RESERVE_LEFT__ ?? 0) > 0);
   await page.waitForFunction(() => (window.__RPIXEL_LOCKED_RESERVE__ ?? 0) > 0);
+
+  const visibleReserveRows = await visibleReserve(page);
+  expect(visibleReserveRows).toHaveLength(6);
+  expect([...new Set(visibleReserveRows.map((item) => item.row))]).toEqual([0, 1]);
+  const bottomReserveY = Math.max(...visibleReserveRows.map((item) => item.y)) + RESERVE_TOKEN_HALF_HEIGHT;
+  expect(BOOSTER_BAR_TOP_Y - bottomReserveY).toBeGreaterThanOrEqual(MIN_RESERVE_TOOLBAR_GAP);
 
   const balance = await page.evaluate(() => ({
     board: window.__RPIXEL_BOARD_COLOR_COUNTS__ ?? {},
