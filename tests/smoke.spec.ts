@@ -11,6 +11,7 @@ const SPEED_TOGGLE_X = 214;
 const SPEED_TOGGLE_Y = 82;
 const CAPACITY_PILL_CENTER_X = 350;
 const CAPACITY_PILL_CENTER_Y = 82;
+const HUD_LABEL_OPTICAL_OFFSET_Y = -7;
 const CAPACITY_PILL_HALF_WIDTH = 75;
 const CAPACITY_PILL_HALF_HEIGHT = 31;
 const RESERVE_TOKEN_HALF_HEIGHT = (178 * 0.68) / 2;
@@ -81,15 +82,27 @@ test('loads the menu and launches shooters through the waiting area', async ({ p
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.8);
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'game');
   expect(await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL__)).toBe('0-5');
+  const speedBounds = await page.evaluate(() => window.__RPIXEL_SPEED_LABEL_BOUNDS__);
+  const speedTarget = await page.evaluate(() => window.__RPIXEL_SPEED_LABEL_TARGET__);
+  expect(speedBounds).toBeTruthy();
+  expect(speedTarget).toEqual({ x: SPEED_TOGGLE_X, y: SPEED_TOGGLE_Y + HUD_LABEL_OPTICAL_OFFSET_Y });
+  if (speedBounds && speedTarget) {
+    expect(Math.abs((speedBounds.left + speedBounds.right) / 2 - speedTarget.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs((speedBounds.top + speedBounds.bottom) / 2 - speedTarget.y)).toBeLessThanOrEqual(1);
+  }
   const capacityBounds = await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL_BOUNDS__);
+  const capacityTarget = await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL_TARGET__);
   expect(capacityBounds).toBeTruthy();
+  expect(capacityTarget).toEqual({ x: CAPACITY_PILL_CENTER_X, y: CAPACITY_PILL_CENTER_Y + HUD_LABEL_OPTICAL_OFFSET_Y });
   if (capacityBounds) {
     expect(capacityBounds.left).toBeGreaterThanOrEqual(CAPACITY_PILL_CENTER_X - CAPACITY_PILL_HALF_WIDTH);
     expect(capacityBounds.right).toBeLessThanOrEqual(CAPACITY_PILL_CENTER_X + CAPACITY_PILL_HALF_WIDTH);
     expect(capacityBounds.top).toBeGreaterThanOrEqual(CAPACITY_PILL_CENTER_Y - CAPACITY_PILL_HALF_HEIGHT);
     expect(capacityBounds.bottom).toBeLessThanOrEqual(CAPACITY_PILL_CENTER_Y + CAPACITY_PILL_HALF_HEIGHT);
-    expect(Math.abs((capacityBounds.left + capacityBounds.right) / 2 - CAPACITY_PILL_CENTER_X)).toBeLessThanOrEqual(1);
-    expect(Math.abs((capacityBounds.top + capacityBounds.bottom) / 2 - CAPACITY_PILL_CENTER_Y)).toBeLessThanOrEqual(1);
+    if (capacityTarget) {
+      expect(Math.abs((capacityBounds.left + capacityBounds.right) / 2 - capacityTarget.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs((capacityBounds.top + capacityBounds.bottom) / 2 - capacityTarget.y)).toBeLessThanOrEqual(1);
+    }
   }
   await page.waitForFunction(() => (window.__RPIXEL_RESERVE_LEFT__ ?? 0) > 0);
   await page.waitForFunction(() => (window.__RPIXEL_LOCKED_RESERVE__ ?? 0) > 0);
