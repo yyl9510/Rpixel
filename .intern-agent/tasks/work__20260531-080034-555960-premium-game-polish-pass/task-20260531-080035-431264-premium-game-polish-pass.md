@@ -35,12 +35,19 @@
 - Do not introduce externally hosted assets or network-dependent runtime behavior.
 
 ### Claimed Output
-- TODO: fill when reporting completion.
+- Slowed the conveyor visual motion while keeping dense moving chevrons/plates so it reads as a conveyor instead of a fast scrolling stripe.
+- Moved the active capacity `0-5` indicator into a compact top HUD pill, beside the speed toggle and away from the reserve/waiting area.
+- Reworked shooter ammo as a smaller centered badge inside the shooter, enlarged shooter tokens, and added stronger shadows/highlights.
+- Added richer generated block and shooter texture lighting, bevels, dark sides, and reserve/background depth treatments.
+- Updated smoke-test conveyor expectations for the slower visual belt speed.
 
 ### Artifacts And Evidence
-- TODO: fill with changed files, commits, generated artifacts, logs, screenshots, or test output.
+- Changed files: `src/game/scenes/GameScene.ts`, `src/game/assets.ts`, `src/main.ts`, `tests/smoke.spec.ts`.
+- Validation: `npm run check` passed; `npm run test:smoke` passed 8/8; `git diff --check` passed.
+- Screenshot artifact: `test-results/premium-polish-game-mobile-v3.png`.
 
 ## Steps
 - 2026-05-31T08:00:35Z: task created
 - 2026-05-31T08:02:42Z: Document premium polish task scope
   - pushed_commit: 9f097d2
+- 2026-05-31T08:12:13Z: Polish conveyor and shooter visuals

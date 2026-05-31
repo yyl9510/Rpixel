@@ -22,6 +22,7 @@ declare global {
     __RPIXEL_CONVEYOR_EFFECTIVE_SCROLL_SPEED__?: number;
     __RPIXEL_CONVEYOR_PLATE_SPACING__?: number;
     __RPIXEL_SPEED_TOGGLE_POSITION__?: { x: number; y: number };
+    __RPIXEL_CAPACITY_LABEL_POSITION__?: { x: number; y: number };
     __RPIXEL_CONVEYOR_OFFSET__?: number;
     __RPIXEL_CONVEYOR_MARKERS__?: number;
     __RPIXEL_VISIBLE_RESERVE__?: Array<{ index: number; row: number; col: number; id: string; color: string; ammo: number; locked: boolean; x: number; y: number }>;
