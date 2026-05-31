@@ -23,7 +23,7 @@ const WAITING_SHOOTER_SCALE = 0.84;
 const SPEED_TOGGLE_POSITION = { x: 214, y: 82 };
 const CAPACITY_LABEL_POSITION = { x: 350, y: 82 };
 const CAPACITY_PILL_SIZE = { width: 150, height: 62 };
-const AMMO_BADGE_CENTER = { x: 0, y: -13 };
+const AMMO_BADGE_CENTER = { x: 0, y: 0 };
 const MANUAL_LAUNCH_HIT_RADIUS = 108;
 const RESERVE_HIT_WIDTH = 206;
 const RESERVE_HIT_HEIGHT = 178;
@@ -149,6 +149,7 @@ export class GameScene extends Phaser.Scene {
   private lastDirectPigPointerStamp = -1;
   private speedMultiplier: 1 | 5 = 1;
   private shotLog: Array<{ pigId: string; color: PigColor; side: Side; lineIndex: number; cell: string; distance: number }> = [];
+  private reserveLabelDebug: Array<{ index: number; id: string; targetX: number; targetY: number; centerX: number; centerY: number; deltaX: number; deltaY: number }> = [];
   private gameOver = false;
 
   private readonly rows = FIRST_LEVEL.grid.length;
@@ -314,9 +315,10 @@ export class GameScene extends Phaser.Scene {
     container.add(this.add.circle(-55, 0, 7, 0x3de083, 0.95).setStrokeStyle(2, 0x071122, 0.72));
     container.add(this.add.circle(55, 0, 7, 0x95a6c9, 0.92).setStrokeStyle(2, 0x071122, 0.72));
     container.add(this.makeRoundRect(92, 9, 5, 0xffffff, 0.13, undefined, 0, 1, -4, -15));
-    this.activeCapacityText = this.add.text(0, 0, `0-${SLOT_CAPACITY}`, this.capacityTextStyle(26)).setOrigin(0.5, 0.54).setStroke('#11182b', 2);
+    this.activeCapacityText = this.add.text(0, 0, `0-${SLOT_CAPACITY}`, this.capacityTextStyle(26)).setOrigin(0.5, 0.5).setStroke('#11182b', 2);
     this.activeCapacityText.setResolution(2);
     container.add(this.activeCapacityText);
+    this.centerCapacityText();
   }
 
   private toggleSpeedMultiplier(): void {
@@ -574,6 +576,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    this.reserveLabelDebug = [];
     this.reserveLayer.removeAll(true);
     this.reserveLayer.add(this.add.ellipse(540, 1636, 650, 300, 0x050915, 0.18));
     this.reserveLayer.add(this.makeRoundRect(640, 316, 58, 0x151b32, 0.52, 0xffffff, 3, 0.08, 540, 1606));
@@ -586,6 +589,7 @@ export class GameScene extends Phaser.Scene {
       const token = this.createPigToken(entry.pig, position.x, position.y, 0.9, !locked, () => this.handleReserveClick(entry.index), false, false);
       token.container.setAlpha(locked ? 0.74 : 1);
       this.reserveLayer?.add(token.container);
+      this.reserveLabelDebug.push(this.ammoLabelDebug(entry.index, entry.pig.id, token.ammoText, position.x, position.y));
     });
     this.renderManualLaunchHitZones();
   }
@@ -1295,17 +1299,17 @@ export class GameScene extends Phaser.Scene {
     const badgeGloss = this.makeRoundRect(34, 7, 4, 0xffffff, 0.2, undefined, 0, 1, AMMO_BADGE_CENTER.x - 5, AMMO_BADGE_CENTER.y - 14);
     const ammoText = this.add
       .text(AMMO_BADGE_CENTER.x, AMMO_BADGE_CENTER.y, mystery ? '?' : String(pig.ammo), this.ammoTextStyle(ammoFontSize))
-      .setOrigin(0.5, 0.57)
+      .setOrigin(0.5, 0.5)
       .setStroke('#071122', 2);
     ammoText.setResolution(3);
     ammoText.setShadow(0, 1, '#050915', 2, false, true);
-    this.positionAmmoText(ammoText, pig.ammo);
     ammoText.setVisible(!mystery);
     badgeBack.setVisible(!mystery);
     badge.setVisible(!mystery);
     badgeInner.setVisible(!mystery);
     badgeGloss.setVisible(!mystery);
     container.add([shadow, body, badgeBack, badge, badgeInner, badgeGloss, ammoText]);
+    this.centerAmmoText(ammoText, container);
 
     if (interactive && onClick) {
       this.bindPigTokenClick(container, scale, onClick);
@@ -1327,14 +1331,14 @@ export class GameScene extends Phaser.Scene {
   private updateAmmoText(ammoText: Phaser.GameObjects.Text, ammo: number): void {
     ammoText.setText(String(ammo));
     ammoText.setFontSize(this.ammoFontSize(ammo));
-    this.positionAmmoText(ammoText, ammo);
+    const container = ammoText.parentContainer as Phaser.GameObjects.Container | undefined;
+    if (container) {
+      this.centerAmmoText(ammoText, container);
+    }
   }
 
-  private positionAmmoText(ammoText: Phaser.GameObjects.Text, ammo: number): void {
-    const text = String(ammo);
-    const startsWithNarrowDigit = text.length > 1 && text.startsWith('1');
-    const wideTwoDigit = text.length === 2 && !startsWithNarrowDigit;
-    ammoText.setPosition(AMMO_BADGE_CENTER.x + (startsWithNarrowDigit ? -2 : wideTwoDigit ? 1 : 0), AMMO_BADGE_CENTER.y + 2);
+  private centerAmmoText(ammoText: Phaser.GameObjects.Text, container: Phaser.GameObjects.Container): void {
+    this.centerTextBoundsOnWorld(ammoText, container.x + AMMO_BADGE_CENTER.x * container.scaleX, container.y + AMMO_BADGE_CENTER.y * container.scaleY, container.scaleX, container.scaleY);
   }
 
   private bindPigTokenClick(container: Phaser.GameObjects.Container, scale: number, onClick: () => void): void {
@@ -1761,6 +1765,7 @@ export class GameScene extends Phaser.Scene {
   private updateDebugState(): void {
     const activeCapacityLabel = `${this.resolvingShooters.length}-${SLOT_CAPACITY}`;
     this.activeCapacityText?.setText(activeCapacityLabel);
+    this.centerCapacityText();
     window.__RPIXEL_CAPACITY_LABEL__ = activeCapacityLabel;
     window.__RPIXEL_ACTIVE_PIGS__ = this.resolvingShooters.length;
     window.__RPIXEL_BLOCKS_LEFT__ = this.totalCells - this.clearedCells;
@@ -1795,6 +1800,7 @@ export class GameScene extends Phaser.Scene {
       const position = this.reservePosition(entry.index);
       return { index: entry.index, row: entry.row, col: entry.col, id: entry.pig.id, color: entry.pig.color, ammo: entry.pig.ammo, locked: this.isReserveLocked(entry), x: position.x, y: position.y };
     });
+    window.__RPIXEL_VISIBLE_RESERVE_LABELS__ = this.reserveLabelDebug;
     window.__RPIXEL_VISIBLE_WAITING__ = this.slots.flatMap((slot, index) => {
       if (!slot) {
         return [];
@@ -1830,6 +1836,40 @@ export class GameScene extends Phaser.Scene {
       bottom: Math.round(bounds.bottom),
       width: Math.round(bounds.width),
       height: Math.round(bounds.height),
+    };
+  }
+
+  private centerCapacityText(): void {
+    if (!this.activeCapacityText) {
+      return;
+    }
+    this.centerTextBoundsOnWorld(this.activeCapacityText, CAPACITY_LABEL_POSITION.x, CAPACITY_LABEL_POSITION.y, 1, 1);
+  }
+
+  private centerTextBoundsOnWorld(text: Phaser.GameObjects.Text, targetX: number, targetY: number, scaleX: number, scaleY: number): void {
+    const bounds = text.getBounds();
+    const centerX = (bounds.left + bounds.right) / 2;
+    const centerY = (bounds.top + bounds.bottom) / 2;
+    const deltaX = (targetX - centerX) / scaleX;
+    const deltaY = (targetY - centerY) / scaleY;
+    if (Number.isFinite(deltaX) && Number.isFinite(deltaY)) {
+      text.setPosition(text.x + deltaX, text.y + deltaY);
+    }
+  }
+
+  private ammoLabelDebug(index: number, id: string, text: Phaser.GameObjects.Text, targetX: number, targetY: number): { index: number; id: string; targetX: number; targetY: number; centerX: number; centerY: number; deltaX: number; deltaY: number } {
+    const bounds = text.getBounds();
+    const centerX = (bounds.left + bounds.right) / 2;
+    const centerY = (bounds.top + bounds.bottom) / 2;
+    return {
+      index,
+      id,
+      targetX: Math.round(targetX * 10) / 10,
+      targetY: Math.round(targetY * 10) / 10,
+      centerX: Math.round(centerX * 10) / 10,
+      centerY: Math.round(centerY * 10) / 10,
+      deltaX: Math.round((centerX - targetX) * 10) / 10,
+      deltaY: Math.round((centerY - targetY) * 10) / 10,
     };
   }
 

@@ -27,6 +27,7 @@ declare global {
     __RPIXEL_CONVEYOR_OFFSET__?: number;
     __RPIXEL_CONVEYOR_MARKERS__?: number;
     __RPIXEL_VISIBLE_RESERVE__?: Array<{ index: number; row: number; col: number; id: string; color: string; ammo: number; locked: boolean; x: number; y: number }>;
+    __RPIXEL_VISIBLE_RESERVE_LABELS__?: Array<{ index: number; id: string; targetX: number; targetY: number; centerX: number; centerY: number; deltaX: number; deltaY: number }>;
     __RPIXEL_VISIBLE_WAITING__?: Array<{ index: number; id: string; color: string; status: string; ammo: number; x: number; y: number; actualX?: number; actualY?: number }>;
     __RPIXEL_ACTIVE_SHOOTERS__?: Array<{ color: string; ammo: number; distance: number; x: number; y: number; orbiting: boolean; side: string; rotation: number; pendingShots: number; completedLap: boolean }>;
     __RPIXEL_EXPOSED_COLORS__?: string[];
