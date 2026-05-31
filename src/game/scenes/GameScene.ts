@@ -24,6 +24,7 @@ const WAITING_SHOOTER_SCALE = 0.84;
 const SPEED_TOGGLE_POSITION = { x: 214, y: 82 };
 const CAPACITY_LABEL_POSITION = { x: 350, y: 82 };
 const CAPACITY_PILL_SIZE = { width: 150, height: 62 };
+const HUD_LABEL_OPTICAL_OFFSET = { x: 0, y: -7 };
 const MANUAL_LAUNCH_HIT_RADIUS = 108;
 const RESERVE_HIT_WIDTH = 206;
 const RESERVE_HIT_HEIGHT = 178;
@@ -298,7 +299,10 @@ export class GameScene extends Phaser.Scene {
     const background = this.makeRoundRect(104, 58, 19, 0x121a30, 0.98, 0x26324d, 3, 0.9);
     const rim = this.makeRoundRect(86, 40, 14, 0x34405f, 0.94, 0xe6eeff, 2, 0.32);
     const gloss = this.makeRoundRect(58, 10, 6, 0xffffff, 0.15, undefined, 0, 1, -3, -14);
-    this.speedToggleText = this.add.text(0, 0, '1x', this.compactHudTextStyle(25)).setOrigin(0.5, 0.5).setStroke('#11182b', 3);
+    this.speedToggleText = this.add
+      .text(HUD_LABEL_OPTICAL_OFFSET.x, HUD_LABEL_OPTICAL_OFFSET.y, '1x', this.compactHudTextStyle(25))
+      .setOrigin(0.5, 0.5)
+      .setStroke('#11182b', 3);
     this.speedToggleText.setResolution(2);
     const hit = this.add.zone(0, 0, 112, 76).setInteractive({ useHandCursor: true });
     hit.on('pointerdown', () => this.toggleSpeedMultiplier());
@@ -313,7 +317,10 @@ export class GameScene extends Phaser.Scene {
     container.add(this.add.circle(-55, 0, 7, 0x3de083, 0.95).setStrokeStyle(2, 0x071122, 0.72));
     container.add(this.add.circle(55, 0, 7, 0x95a6c9, 0.92).setStrokeStyle(2, 0x071122, 0.72));
     container.add(this.makeRoundRect(92, 9, 5, 0xffffff, 0.13, undefined, 0, 1, -4, -15));
-    this.activeCapacityText = this.add.text(0, 0, `0-${SLOT_CAPACITY}`, this.capacityTextStyle(26)).setOrigin(0.5, 0.5).setStroke('#11182b', 2);
+    this.activeCapacityText = this.add
+      .text(HUD_LABEL_OPTICAL_OFFSET.x, HUD_LABEL_OPTICAL_OFFSET.y, `0-${SLOT_CAPACITY}`, this.capacityTextStyle(26))
+      .setOrigin(0.5, 0.5)
+      .setStroke('#11182b', 2);
     this.activeCapacityText.setResolution(2);
     container.add(this.activeCapacityText);
   }
@@ -321,6 +328,7 @@ export class GameScene extends Phaser.Scene {
   private toggleSpeedMultiplier(): void {
     this.speedMultiplier = this.speedMultiplier === 1 ? 5 : 1;
     this.speedToggleText?.setText(`${this.speedMultiplier}x`);
+    this.speedToggleText?.setPosition(HUD_LABEL_OPTICAL_OFFSET.x, HUD_LABEL_OPTICAL_OFFSET.y).setOrigin(0.5, 0.5);
     this.updateDebugState();
   }
 
@@ -501,6 +509,9 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_SPEED_TOGGLE_POSITION__ = SPEED_TOGGLE_POSITION;
     window.__RPIXEL_CAPACITY_LABEL_POSITION__ = CAPACITY_LABEL_POSITION;
     window.__RPIXEL_CAPACITY_LABEL_BOUNDS__ = this.activeCapacityText ? this.toDebugBounds(this.activeCapacityText.getBounds()) : undefined;
+    window.__RPIXEL_SPEED_LABEL_BOUNDS__ = this.speedToggleText ? this.toDebugBounds(this.speedToggleText.getBounds()) : undefined;
+    window.__RPIXEL_CAPACITY_LABEL_TARGET__ = { x: CAPACITY_LABEL_POSITION.x + HUD_LABEL_OPTICAL_OFFSET.x, y: CAPACITY_LABEL_POSITION.y + HUD_LABEL_OPTICAL_OFFSET.y };
+    window.__RPIXEL_SPEED_LABEL_TARGET__ = { x: SPEED_TOGGLE_POSITION.x + HUD_LABEL_OPTICAL_OFFSET.x, y: SPEED_TOGGLE_POSITION.y + HUD_LABEL_OPTICAL_OFFSET.y };
   }
 
   private transferUploadStart(): Phaser.Math.Vector2 {
@@ -1696,7 +1707,7 @@ export class GameScene extends Phaser.Scene {
   private updateDebugState(): void {
     const activeCapacityLabel = `${this.resolvingShooters.length}-${SLOT_CAPACITY}`;
     this.activeCapacityText?.setText(activeCapacityLabel);
-    this.activeCapacityText?.setPosition(0, 0).setOrigin(0.5, 0.5);
+    this.activeCapacityText?.setPosition(HUD_LABEL_OPTICAL_OFFSET.x, HUD_LABEL_OPTICAL_OFFSET.y).setOrigin(0.5, 0.5);
     window.__RPIXEL_CAPACITY_LABEL__ = activeCapacityLabel;
     window.__RPIXEL_ACTIVE_PIGS__ = this.resolvingShooters.length;
     window.__RPIXEL_BLOCKS_LEFT__ = this.totalCells - this.clearedCells;
@@ -1717,6 +1728,9 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_SPEED_TOGGLE_POSITION__ = SPEED_TOGGLE_POSITION;
     window.__RPIXEL_CAPACITY_LABEL_POSITION__ = CAPACITY_LABEL_POSITION;
     window.__RPIXEL_CAPACITY_LABEL_BOUNDS__ = this.activeCapacityText ? this.toDebugBounds(this.activeCapacityText.getBounds()) : undefined;
+    window.__RPIXEL_SPEED_LABEL_BOUNDS__ = this.speedToggleText ? this.toDebugBounds(this.speedToggleText.getBounds()) : undefined;
+    window.__RPIXEL_CAPACITY_LABEL_TARGET__ = { x: CAPACITY_LABEL_POSITION.x + HUD_LABEL_OPTICAL_OFFSET.x, y: CAPACITY_LABEL_POSITION.y + HUD_LABEL_OPTICAL_OFFSET.y };
+    window.__RPIXEL_SPEED_LABEL_TARGET__ = { x: SPEED_TOGGLE_POSITION.x + HUD_LABEL_OPTICAL_OFFSET.x, y: SPEED_TOGGLE_POSITION.y + HUD_LABEL_OPTICAL_OFFSET.y };
     window.__RPIXEL_BOARD_COLOR_COUNTS__ = this.countInitialBoardColors();
     window.__RPIXEL_AMMO_COLOR_TOTALS__ = this.countInitialAmmoTotals();
     window.__RPIXEL_ALL_SHOOTER_AMMO__ = FIRST_LEVEL.pigs.map((pig) => pig.ammo);

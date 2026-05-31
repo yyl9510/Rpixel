@@ -1,0 +1,50 @@
+# Center HUD speed and capacity labels
+
+- task_id: task-20260531-174208-756286-center-hud-speed-and-capacity-labels
+- branch: work/20260531-174207-912305-center-hud-speed-and-capacity-labels
+- branch_slug: work__20260531-174207-912305-center-hud-speed-and-capacity-labels
+- created_utc: 2026-05-31T17:42:08Z
+- status: complete
+
+## Description
+User provided screenshot showing top HUD labels are not visually centered: the speed toggle value (1x/5x) and active capacity label (0-5/5-5) sit off-center. Fix their visual centering, add debug evidence/tests, validate, push, merge, and verify GitHub Pages.
+
+## Review Brief
+### Original Request
+User provided screenshot showing top HUD labels are not visually centered: the speed toggle value (1x/5x) and active capacity label (0-5/5-5) sit off-center. Fix their visual centering, add debug evidence/tests, validate, push, merge, and verify GitHub Pages.
+
+### Assigned Scope
+- Fix the top HUD speed toggle value (`1x`/`5x`) and active-capacity value (`0-5` through `5-5`) so their visible text sits optically centered in their capsules.
+- Keep the change scoped to HUD text positioning/debug/test coverage; do not redesign unrelated gameplay or token art.
+
+### Deliverables
+- Updated `GameScene.ts` HUD label positioning and debug state.
+- Updated global debug typings in `src/main.ts` if new debug fields are added.
+- Smoke-test assertions proving the HUD label bounds land on the intended optical centers.
+
+### Validation Plan
+- Run `npm run check`.
+- Run `npm run test:smoke`.
+- Verify GitHub Pages after merging to `main`.
+
+### Constraints And Non-Goals
+- Avoid loading many screenshots into Codex because prior Rpixel visual turns triggered 413 payload errors.
+- Do not restart daemon or unrelated agents.
+
+### Claimed Output
+- Added a shared HUD optical offset so the speed toggle value and active-capacity value are positioned on their visible center rather than the font baseline center.
+- Added debug bounds/targets for the speed and capacity labels.
+- Updated smoke coverage to assert both labels are centered on their intended optical targets while staying inside the capacity pill.
+
+### Artifacts And Evidence
+- Changed files: `src/game/scenes/GameScene.ts`, `src/main.ts`, `tests/smoke.spec.ts`.
+- Validation passed: `npm run check`.
+- Validation passed: `npm run test:smoke` (8/8 Playwright tests).
+- Local visual sanity: `/tmp/rpixel-centered-hud-full.png` showed `1x` and `0-5` moved upward into their capsules compared with the user's screenshot.
+
+## Steps
+- 2026-05-31T17:42:08Z: task created
+- 2026-05-31T17:47:04Z: Center HUD speed and capacity labels
+  - pushed_commit: 5fd76f0
+- 2026-05-31T17:47:34Z: Record HUD label centering validation
+  - pushed_commit: d8ba0e7
