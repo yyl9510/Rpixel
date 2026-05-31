@@ -4,7 +4,7 @@
 - branch: work/20260531-080034-555960-premium-game-polish-pass
 - branch_slug: work__20260531-080034-555960-premium-game-polish-pass
 - created_utc: 2026-05-31T08:00:35Z
-- status: active
+- status: complete
 
 ## Description
 根据用户反馈继续提升 Pixel Flow H5 游戏画质：底部传送带慢速但清晰呈现传送带感；增强小怪和方块质感与阴影；优化小怪中间数字徽章；调整 0-5 容量数字避免被待选区遮挡；将 1x/5x 加速按钮放到顶部设置旁边并避免场地遮挡；整体提升高级游戏画质。
@@ -45,6 +45,8 @@
 - Changed files: `src/game/scenes/GameScene.ts`, `src/game/assets.ts`, `src/main.ts`, `tests/smoke.spec.ts`.
 - Validation: `npm run check` passed; `npm run test:smoke` passed 8/8; `git diff --check` passed.
 - Screenshot artifact: `test-results/premium-polish-game-mobile-v3.png`.
+- Deployment: GitHub Pages run `26707424131` completed successfully for commit `65a032d`; online sanity check passed at `https://yyl9510.github.io/Rpixel/?v=65a032d`.
+- Online screenshot artifact: `test-results/pages-premium-polish-game.png`.
 
 ## Steps
 - 2026-05-31T08:00:35Z: task created
