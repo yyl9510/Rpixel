@@ -14,11 +14,13 @@ const SLOT_Y = 1360;
 const RESERVE_VISIBLE = 9;
 const RESERVE_COLS = 3;
 const TRACK_SPEED = 820;
-const CONVEYOR_SCROLL_SPEED = TRACK_SPEED;
+const CONVEYOR_SCROLL_SPEED = 220;
+const CONVEYOR_FAST_MULTIPLIER = 1.7;
 const CONVEYOR_PLATE_SPACING = 78;
 const TRANSFER_PLATE_SPACING = 48;
-const TRACK_SHOOTER_SCALE = 0.76;
-const WAITING_SHOOTER_SCALE = 0.72;
+const TRACK_SHOOTER_SCALE = 0.82;
+const WAITING_SHOOTER_SCALE = 0.78;
+const SPEED_TOGGLE_POSITION = { x: 214, y: 82 };
 const MANUAL_LAUNCH_HIT_RADIUS = 108;
 const RESERVE_HIT_WIDTH = 206;
 const RESERVE_HIT_HEIGHT = 178;
@@ -259,13 +261,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawSpeedToggle(): void {
-    const container = this.add.container(934, 190).setDepth(52);
-    const background = this.makeRoundRect(142, 70, 22, 0x101830, 0.88, 0xdce7ff, 5, 0.65);
-    const gloss = this.makeRoundRect(106, 22, 10, 0xffffff, 0.2, undefined, 0, 1, -6, -15);
-    this.speedToggleText = this.add.text(0, -25, '1x', this.textStyle(38)).setOrigin(0.5, 0).setStroke('#06101f', 8);
-    const hit = this.add.zone(0, 0, 160, 90).setInteractive({ useHandCursor: true });
+    const container = this.add.container(SPEED_TOGGLE_POSITION.x, SPEED_TOGGLE_POSITION.y).setDepth(52);
+    const shadow = this.add.ellipse(3, 9, 132, 54, 0x050915, 0.28);
+    const background = this.makeRoundRect(118, 64, 20, 0x27304b, 0.96, 0x050915, 6, 1);
+    const rim = this.makeRoundRect(100, 48, 16, 0x10172c, 0.92, 0xdce7ff, 4, 0.74);
+    const gloss = this.makeRoundRect(80, 15, 8, 0xffffff, 0.2, undefined, 0, 1, -4, -16);
+    this.speedToggleText = this.add.text(0, -24, '1x', this.textStyle(35)).setOrigin(0.5, 0).setStroke('#06101f', 8);
+    const hit = this.add.zone(0, 0, 136, 82).setInteractive({ useHandCursor: true });
     hit.on('pointerdown', () => this.toggleSpeedMultiplier());
-    container.add([background, gloss, this.speedToggleText, hit]);
+    container.add([shadow, background, rim, gloss, this.speedToggleText, hit]);
   }
 
   private toggleSpeedMultiplier(): void {
@@ -403,10 +407,13 @@ export class GameScene extends Phaser.Scene {
   private makeConveyorPlate(width: number, height: number): Phaser.GameObjects.Container {
     const container = this.add.container(0, 0);
     const g = this.add.graphics();
-    g.lineStyle(Math.max(8, height * 0.42), 0x8b91bd, 0.32);
+    g.lineStyle(Math.max(10, height * 0.46), 0x050915, 0.16);
+    g.lineBetween(-width * 0.25, -height * 0.36, width * 0.13, 0.5);
+    g.lineBetween(width * 0.13, 0.5, -width * 0.25, height * 0.36);
+    g.lineStyle(Math.max(8, height * 0.42), 0xa9b2df, 0.44);
     g.lineBetween(-width * 0.28, -height * 0.42, width * 0.1, 0);
     g.lineBetween(width * 0.1, 0, -width * 0.28, height * 0.42);
-    g.lineStyle(Math.max(3, height * 0.16), 0xdbe6ff, 0.18);
+    g.lineStyle(Math.max(3, height * 0.16), 0xf2f7ff, 0.28);
     g.lineBetween(-width * 0.22, -height * 0.35, width * 0.02, 0);
     g.lineBetween(width * 0.02, 0, -width * 0.22, height * 0.35);
     container.add(g);
@@ -418,7 +425,8 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const scroll = (CONVEYOR_SCROLL_SPEED * this.speedMultiplier * delta) / 1000;
+    const conveyorMultiplier = this.speedMultiplier === 5 ? CONVEYOR_FAST_MULTIPLIER : 1;
+    const scroll = (CONVEYOR_SCROLL_SPEED * conveyorMultiplier * delta) / 1000;
     this.conveyorOffset = (this.conveyorOffset + scroll) % CONVEYOR_PLATE_SPACING;
 
     this.conveyorPlates.forEach((plate) => {
@@ -438,7 +446,9 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_CONVEYOR_MARKERS__ = this.conveyorPlates.length;
     window.__RPIXEL_TRACK_SPEED__ = TRACK_SPEED;
     window.__RPIXEL_CONVEYOR_SCROLL_SPEED__ = CONVEYOR_SCROLL_SPEED;
+    window.__RPIXEL_CONVEYOR_EFFECTIVE_SCROLL_SPEED__ = CONVEYOR_SCROLL_SPEED * conveyorMultiplier;
     window.__RPIXEL_CONVEYOR_PLATE_SPACING__ = CONVEYOR_PLATE_SPACING;
+    window.__RPIXEL_SPEED_TOGGLE_POSITION__ = SPEED_TOGGLE_POSITION;
   }
 
   private transferUploadStart(): Phaser.Math.Vector2 {
@@ -494,7 +504,9 @@ export class GameScene extends Phaser.Scene {
     for (let line = 0; line < 8; line += 1) {
       this.slotChromeLayer.add(this.add.rectangle(44, this.track.bottom - 134 + line * 18, 100, 7, 0xffffff, 0.8).setStrokeStyle(1, 0x9aa7c8, 0.6));
     }
-    this.activeCapacityText = this.add.text(58, this.track.bottom + 30, `0-${SLOT_CAPACITY}`, this.textStyle(44)).setOrigin(0.5, 0).setStroke('#050915', 10);
+    this.slotChromeLayer.add(this.makeRoundRect(126, 58, 18, 0x10172c, 0.92, 0xdce7ff, 4, 0.6, 120, this.track.bottom + 46));
+    this.slotChromeLayer.add(this.makeRoundRect(104, 24, 10, 0xffffff, 0.14, undefined, 0, 1, 114, this.track.bottom + 27));
+    this.activeCapacityText = this.add.text(120, this.track.bottom + 17, `0-${SLOT_CAPACITY}`, this.textStyle(40)).setOrigin(0.5, 0).setStroke('#050915', 10);
     this.slotChromeLayer.add(this.activeCapacityText);
 
     for (let index = 0; index < SLOT_CAPACITY; index += 1) {
@@ -515,7 +527,7 @@ export class GameScene extends Phaser.Scene {
     this.visibleReserveEntries().forEach((entry) => {
       const position = this.reservePosition(entry.index);
       const locked = this.isReserveLocked(entry);
-      const token = this.createPigToken(entry.pig, position.x, position.y, 0.74, !locked, () => this.handleReserveClick(entry.index), false, false);
+      const token = this.createPigToken(entry.pig, position.x, position.y, 0.8, !locked, () => this.handleReserveClick(entry.index), false, false);
       token.container.setAlpha(locked ? 0.74 : 1);
       this.reserveLayer?.add(token.container);
     });
@@ -1205,7 +1217,7 @@ export class GameScene extends Phaser.Scene {
     mystery = false,
   ): { container: Phaser.GameObjects.Container; body: Phaser.GameObjects.Container; ammoText: Phaser.GameObjects.Text } {
     const container = this.add.container(x, y).setScale(scale);
-    const shadow = this.add.ellipse(8, 18, 132, 58, 0x050915, 0.25);
+    const shadow = this.add.ellipse(10, 24, 146, 64, 0x050915, 0.34);
     const body = this.add.container(0, 0);
     const barrel = this.add.rectangle(0, -84, 30, 68, 0x242a3d).setStrokeStyle(5, 0x050915);
     const barrelTip = this.add.circle(0, -120, 18, 0x5c6684).setStrokeStyle(5, 0x050915);
@@ -1214,10 +1226,15 @@ export class GameScene extends Phaser.Scene {
 
     const image = mystery ? this.makeMysteryToken() : this.add.image(0, 0, `shooter-${pig.color}`);
     body.add([barrel, barrelTip, image]);
-    const ammoText = this.add.text(0, -54, mystery ? '?' : String(pig.ammo), this.textStyle(mystery ? 58 : 66)).setOrigin(0.5, 0).setStroke('#06101f', 12);
+    const ammoFontSize = mystery ? 42 : pig.ammo >= 100 ? 34 : pig.ammo >= 10 ? 40 : 44;
+    const badge = this.makeRoundRect(88, 54, 18, 0xffffff, 0.2, 0x050915, 5, 0.52, 0, -6);
+    const badgeGloss = this.makeRoundRect(62, 12, 6, 0xffffff, 0.28, undefined, 0, 1, -4, -26);
+    const ammoText = this.add.text(0, -34, mystery ? '?' : String(pig.ammo), this.textStyle(ammoFontSize)).setOrigin(0.5, 0).setStroke('#06101f', 8);
     ammoText.setResolution(2);
     ammoText.setVisible(!mystery);
-    container.add([shadow, body, ammoText]);
+    badge.setVisible(!mystery);
+    badgeGloss.setVisible(!mystery);
+    container.add([shadow, body, badge, badgeGloss, ammoText]);
 
     if (interactive && onClick) {
       this.bindPigTokenClick(container, scale, onClick);
@@ -1665,7 +1682,9 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_CONVEYOR_MARKERS__ = this.conveyorPlates.length;
     window.__RPIXEL_TRACK_SPEED__ = TRACK_SPEED;
     window.__RPIXEL_CONVEYOR_SCROLL_SPEED__ = CONVEYOR_SCROLL_SPEED;
+    window.__RPIXEL_CONVEYOR_EFFECTIVE_SCROLL_SPEED__ = CONVEYOR_SCROLL_SPEED * (this.speedMultiplier === 5 ? CONVEYOR_FAST_MULTIPLIER : 1);
     window.__RPIXEL_CONVEYOR_PLATE_SPACING__ = CONVEYOR_PLATE_SPACING;
+    window.__RPIXEL_SPEED_TOGGLE_POSITION__ = SPEED_TOGGLE_POSITION;
     window.__RPIXEL_BOARD_COLOR_COUNTS__ = this.countInitialBoardColors();
     window.__RPIXEL_AMMO_COLOR_TOTALS__ = this.countInitialAmmoTotals();
     window.__RPIXEL_ALL_SHOOTER_AMMO__ = FIRST_LEVEL.pigs.map((pig) => pig.ammo);
