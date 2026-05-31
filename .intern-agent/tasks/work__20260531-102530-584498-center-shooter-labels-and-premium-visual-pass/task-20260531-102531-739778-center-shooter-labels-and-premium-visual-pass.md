@@ -4,7 +4,7 @@
 - branch: work/20260531-102530-584498-center-shooter-labels-and-premium-visual-pass
 - branch_slug: work__20260531-102530-584498-center-shooter-labels-and-premium-visual-pass
 - created_utc: 2026-05-31T10:25:31Z
-- status: active
+- status: complete
 
 ## Description
 用户反馈：小怪身上的数字不在正中心，场上可容纳小怪的 0-5 超出显示范围，整体画面仍显廉价。需要修正数字居中/容量显示范围，并继续提升质感和高级感，完成后自测、push、部署验证。
@@ -47,6 +47,7 @@
 - Changed files: `src/game/assets.ts`, `src/game/scenes/GameScene.ts`, `src/main.ts`, `tests/smoke.spec.ts`.
 - Validation: `npm run check` passed; `npm run test:smoke` passed 8/8; `git diff --check` passed.
 - Local visual/debug sanity: `/tmp/rpixel-local-visual.png` captured once; debug bounds showed `0-5` and `5-5` inside the capacity pill, 6 visible reserve items across rows `[0, 1]`, and an estimated 65 game-unit gap between the second reserve row and toolbar.
+- Main merge/deploy: merged to `main` at `243fa3f`, pushed to `origin/main`, GitHub Pages workflow `26710722005` completed with `success`, and online sanity check passed at `https://yyl9510.github.io/Rpixel/?v=243fa3f`.
 
 ## Steps
 - 2026-05-31T10:25:31Z: task created
@@ -55,3 +56,5 @@
 - 2026-05-31T10:55:55Z: Implement centered labels, bottom reserve clearance, premium visual polish, and layout smoke assertions
 - 2026-05-31T10:56:12Z: Polish shooter labels and reserve layout
   - pushed_commit: 687f400
+- 2026-05-31T11:01:20Z: Verify GitHub Pages deployment and mark task complete
+- 2026-05-31T11:01:30Z: Record Pages deployment verification
