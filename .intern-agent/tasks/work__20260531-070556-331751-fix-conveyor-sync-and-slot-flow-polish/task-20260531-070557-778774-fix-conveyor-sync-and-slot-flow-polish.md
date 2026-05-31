@@ -54,3 +54,4 @@ User reports: conveyor scroll speed must exactly match shooter track speed so sh
 ## Steps
 - 2026-05-31T07:05:57Z: task created
 - 2026-05-31T07:15:12Z: Sync conveyor speed and fix waiting slot flow
+  - pushed_commit: 2a3e841
