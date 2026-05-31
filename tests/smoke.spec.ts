@@ -37,6 +37,10 @@ async function visibleReserve(page: Page) {
   return page.evaluate(() => window.__RPIXEL_VISIBLE_RESERVE__ ?? []);
 }
 
+async function visibleReserveLabels(page: Page) {
+  return page.evaluate(() => window.__RPIXEL_VISIBLE_RESERVE_LABELS__ ?? []);
+}
+
 async function visibleWaiting(page: Page) {
   return page.evaluate(() => window.__RPIXEL_VISIBLE_WAITING__ ?? []);
 }
@@ -84,12 +88,20 @@ test('loads the menu and launches shooters through the waiting area', async ({ p
     expect(capacityBounds.right).toBeLessThanOrEqual(CAPACITY_PILL_CENTER_X + CAPACITY_PILL_HALF_WIDTH);
     expect(capacityBounds.top).toBeGreaterThanOrEqual(CAPACITY_PILL_CENTER_Y - CAPACITY_PILL_HALF_HEIGHT);
     expect(capacityBounds.bottom).toBeLessThanOrEqual(CAPACITY_PILL_CENTER_Y + CAPACITY_PILL_HALF_HEIGHT);
+    expect(Math.abs((capacityBounds.left + capacityBounds.right) / 2 - CAPACITY_PILL_CENTER_X)).toBeLessThanOrEqual(1);
+    expect(Math.abs((capacityBounds.top + capacityBounds.bottom) / 2 - CAPACITY_PILL_CENTER_Y)).toBeLessThanOrEqual(1);
   }
   await page.waitForFunction(() => (window.__RPIXEL_RESERVE_LEFT__ ?? 0) > 0);
   await page.waitForFunction(() => (window.__RPIXEL_LOCKED_RESERVE__ ?? 0) > 0);
 
   const visibleReserveRows = await visibleReserve(page);
   expect(visibleReserveRows).toHaveLength(6);
+  const reserveLabels = await visibleReserveLabels(page);
+  expect(reserveLabels).toHaveLength(6);
+  reserveLabels.forEach((label) => {
+    expect(Math.abs(label.deltaX)).toBeLessThanOrEqual(1);
+    expect(Math.abs(label.deltaY)).toBeLessThanOrEqual(1);
+  });
   expect([...new Set(visibleReserveRows.map((item) => item.row))]).toEqual([0, 1]);
   const bottomReserveY = Math.max(...visibleReserveRows.map((item) => item.y)) + RESERVE_TOKEN_HALF_HEIGHT;
   expect(BOOSTER_BAR_TOP_Y - bottomReserveY).toBeGreaterThanOrEqual(MIN_RESERVE_TOOLBAR_GAP);
