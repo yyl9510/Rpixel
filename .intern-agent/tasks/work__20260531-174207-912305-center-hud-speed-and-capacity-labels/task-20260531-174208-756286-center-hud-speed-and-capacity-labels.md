@@ -40,3 +40,4 @@ User provided screenshot showing top HUD labels are not visually centered: the s
 ## Steps
 - 2026-05-31T17:42:08Z: task created
 - 2026-05-31T17:47:04Z: Center HUD speed and capacity labels
+  - pushed_commit: 5fd76f0
