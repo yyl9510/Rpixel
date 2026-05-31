@@ -37,12 +37,20 @@
 - Avoid network-dependent runtime assets.
 
 ### Claimed Output
-- TODO: fill when reporting completion.
+- Centered shooter ammo badges with dedicated compact text styling and optical centering for reserve, waiting, and active shooter tokens.
+- Reworked the active capacity HUD pill so `0-5` through `5-5` stays inside the pill and does not collide with the speed toggle.
+- Reduced the bottom reserve preview to two rows, raised/shortened the booster toolbar, and kept the second reserve row clear of the toolbar.
+- Polished generated block/shooter textures and in-game chrome with lighter outlines, softer shadows, richer surfaces, and restrained HUD treatments.
+- Added smoke coverage for capacity label bounds and bottom reserve/tool bar spacing.
 
 ### Artifacts And Evidence
-- TODO: fill with changed files, commits, generated artifacts, logs, screenshots, or test output.
+- Changed files: `src/game/assets.ts`, `src/game/scenes/GameScene.ts`, `src/main.ts`, `tests/smoke.spec.ts`.
+- Validation: `npm run check` passed; `npm run test:smoke` passed 8/8; `git diff --check` passed.
+- Local visual/debug sanity: `/tmp/rpixel-local-visual.png` captured once; debug bounds showed `0-5` and `5-5` inside the capacity pill, 6 visible reserve items across rows `[0, 1]`, and an estimated 65 game-unit gap between the second reserve row and toolbar.
 
 ## Steps
 - 2026-05-31T10:25:31Z: task created
 - 2026-05-31T10:25:49Z: Document centered label polish scope
   - pushed_commit: f23e681
+- 2026-05-31T10:55:55Z: Implement centered labels, bottom reserve clearance, premium visual polish, and layout smoke assertions
+- 2026-05-31T10:56:12Z: Polish shooter labels and reserve layout
