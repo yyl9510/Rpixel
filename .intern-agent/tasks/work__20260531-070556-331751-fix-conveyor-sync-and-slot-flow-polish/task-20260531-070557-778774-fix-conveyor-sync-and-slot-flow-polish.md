@@ -4,7 +4,7 @@
 - branch: work/20260531-070556-331751-fix-conveyor-sync-and-slot-flow-polish
 - branch_slug: work__20260531-070556-331751-fix-conveyor-sync-and-slot-flow-polish
 - created_utc: 2026-05-31T07:05:57Z
-- status: active
+- status: complete
 
 ## Description
 User reports: conveyor scroll speed must exactly match shooter track speed so shooters feel carried by belt; visual fidelity should more closely replicate uploaded Pixel Flow reference; active shooter movement feels stuttery and ammo text unreadable while moving; rapidly tapping waiting shooters can leave gaps; returning shooter sometimes animates to leftmost slot first then jumps to correct slot. Fix gameplay state/animation bugs, improve smoothness/readability, validate locally, push and deploy.
@@ -49,9 +49,12 @@ User reports: conveyor scroll speed must exactly match shooter track speed so sh
 - `npm run test:smoke` passed: 8/8 Playwright tests.
 - `git diff --check` passed.
 - Local runtime sampling: active shooter speed `820`, belt speed `820`, conveyor spacing `78`, screenshot saved at `test-results/conveyor-sync-slot-polish.png`.
+- Merged to `main` at `96a0189`, GitHub Pages Action `26706291503` completed successfully.
+- Online sanity passed at `https://yyl9510.github.io/Rpixel/?v=96a0189`: track speed `820`, conveyor speed `820`, belt/active modular drift `0.1`, board and ammo totals matched.
 - Changed files: `src/game/scenes/GameScene.ts`, `src/main.ts`, `tests/smoke.spec.ts`, this task record.
 
 ## Steps
 - 2026-05-31T07:05:57Z: task created
 - 2026-05-31T07:15:12Z: Sync conveyor speed and fix waiting slot flow
   - pushed_commit: 2a3e841
+- 2026-05-31T07:19:39Z: completed - Complete conveyor sync and slot flow polish
