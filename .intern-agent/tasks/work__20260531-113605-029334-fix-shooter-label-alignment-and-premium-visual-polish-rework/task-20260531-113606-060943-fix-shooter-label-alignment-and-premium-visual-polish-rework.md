@@ -53,3 +53,4 @@
 - 2026-05-31T11:36:06Z: task created
 - 2026-05-31T11:43:48Z: Rework ammo label centering, capacity pill, mobile framing, and premium visual treatment
 - 2026-05-31T11:44:09Z: Rework shooter labels and premium framing
+  - pushed_commit: 56f2d72
