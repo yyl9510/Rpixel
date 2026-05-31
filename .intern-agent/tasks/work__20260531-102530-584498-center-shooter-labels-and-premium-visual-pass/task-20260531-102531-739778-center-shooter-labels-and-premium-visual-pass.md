@@ -54,3 +54,4 @@
   - pushed_commit: f23e681
 - 2026-05-31T10:55:55Z: Implement centered labels, bottom reserve clearance, premium visual polish, and layout smoke assertions
 - 2026-05-31T10:56:12Z: Polish shooter labels and reserve layout
+  - pushed_commit: 687f400
