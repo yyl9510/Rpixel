@@ -4,7 +4,7 @@
 - branch: work/20260601-181327-931123-polish-waiting-launch-hud-token-visuals
 - branch_slug: work__20260601-181327-931123-polish-waiting-launch-hud-token-visuals
 - created_utc: 2026-06-01T18:13:28Z
-- status: active
+- status: complete
 
 ## Description
 User requested six gameplay polish fixes: animate reserve column items moving forward after top shooter launches; launch shooters directly to a better track start instead of sliding from/wrapping around the lower-left overlap; remove meaningless center treasure chest; adjust top-left speed/capacity HUD numbers upward-left like prior ammo centering work; improve number visual quality; keep shooter token nozzle/barrel consistent before and after entering the track.
@@ -51,5 +51,7 @@ User requested six gameplay polish fixes: animate reserve column items moving fo
 - 2026-06-01T18:13:28Z: task created
 - 2026-06-01T18:29:00Z: implemented reserve/launch/HUD/token visual polish and removed playfield treasure.
 - 2026-06-01T18:31:00Z: `npm run check` and `npm run test:smoke` passed; Playwright debug coordinate check completed without screenshots.
+- 2026-06-01T18:33:00Z: marked task complete after branch push.
 - 2026-06-01T18:22:41Z: Polish waiting launch hud token visuals
   - pushed_commit: ab6d5d4
+- 2026-06-01T18:23:10Z: Mark visual polish task complete
