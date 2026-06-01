@@ -50,3 +50,4 @@
 - 2026-06-01T14:48:15Z: Tune shooter ammo offsets by digit count
   - pushed_commit: 4cfed7c
 - 2026-06-01T14:52:16Z: Record digit-count offset deployment
+  - pushed_commit: d92864d
