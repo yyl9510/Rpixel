@@ -23,8 +23,8 @@ interface ShooterTokenOptions {
 
 const AMMO_LABEL_CENTER = { x: 0, y: 0 };
 const AMMO_NUMBER_VISUAL_OFFSETS = {
-  singleDigit: { x: -20, y: -20 },
-  multiDigit: { x: -38, y: -18 },
+  singleDigit: { x: -16, y: -20 },
+  multiDigit: { x: -28, y: -18 },
 };
 
 export class ShooterToken extends Phaser.GameObjects.Container {
