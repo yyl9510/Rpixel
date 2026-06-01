@@ -109,14 +109,17 @@ test('loads the menu and launches shooters through the waiting area', async ({ p
   await page.waitForFunction(() => (window.__RPIXEL_LOCKED_RESERVE__ ?? 0) > 0);
 
   const visibleReserveRows = await visibleReserve(page);
-  expect(visibleReserveRows).toHaveLength(6);
+  expect(visibleReserveRows).toHaveLength(10);
   const reserveLabels = await visibleReserveLabels(page);
-  expect(reserveLabels).toHaveLength(6);
+  expect(reserveLabels).toHaveLength(10);
   reserveLabels.forEach((label) => {
     expect(Math.abs(label.deltaX)).toBeLessThanOrEqual(1);
     expect(Math.abs(label.deltaY)).toBeLessThanOrEqual(1);
   });
   expect([...new Set(visibleReserveRows.map((item) => item.row))]).toEqual([0, 1]);
+  visibleReserveRows.forEach((item) => {
+    expect(item.x).toBe(160 + item.col * 190);
+  });
   const bottomReserveY = Math.max(...visibleReserveRows.map((item) => item.y)) + RESERVE_TOKEN_HALF_HEIGHT;
   expect(BOOSTER_BAR_TOP_Y - bottomReserveY).toBeGreaterThanOrEqual(MIN_RESERVE_TOOLBAR_GAP);
 
@@ -350,12 +353,12 @@ test('edge hit zones launch all first-row reserve columns and every waiting slot
   await page.waitForFunction(() => window.__RPIXEL_SPEED_MULTIPLIER__ === 5);
 
   const initialTop = (await visibleReserve(page)).filter((item) => !item.locked).sort((a, b) => a.col - b.col);
-  expect(initialTop).toHaveLength(3);
+  expect(initialTop).toHaveLength(5);
   for (const shooter of initialTop) {
-    await clickGame(page, box, shooter.x + 96, shooter.y + 12);
+    await clickGame(page, box, shooter.x + 70, shooter.y + 12);
     await page.waitForTimeout(120);
   }
-  await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 3, undefined, { timeout: 10_000 });
+  await page.waitForFunction(() => (window.__RPIXEL_ACTIVE_PIGS__ ?? 0) === 5, undefined, { timeout: 10_000 });
   const afterTop = await visibleReserve(page);
   initialTop.forEach((shooter) => {
     expect(afterTop.find((entry) => entry.col === shooter.col && entry.row === 0)?.id).not.toBe(shooter.id);
@@ -422,7 +425,7 @@ test('advances only the clicked reserve column and fires one shot per track step
 
   const before = await visibleReserve(page);
   const topRow = before.filter((item) => !item.locked).sort((a, b) => a.col - b.col);
-  expect(topRow).toHaveLength(3);
+  expect(topRow).toHaveLength(5);
 
   const exposed = new Set(await page.evaluate(() => window.__RPIXEL_EXPOSED_COLORS__ ?? []));
   const chosen = topRow.find((item) => exposed.has(item.color)) ?? topRow[0];
