@@ -21,10 +21,11 @@ const CONVEYOR_PLATE_SPACING = 62;
 const TRANSFER_PLATE_SPACING = 62;
 const TRACK_SHOOTER_SCALE = 0.9;
 const WAITING_SHOOTER_SCALE = 0.84;
+const TRACK_START_OFFSET = 118;
 const SPEED_TOGGLE_POSITION = { x: 214, y: 82 };
 const CAPACITY_LABEL_POSITION = { x: 350, y: 82 };
 const CAPACITY_PILL_SIZE = { width: 150, height: 62 };
-const HUD_LABEL_OPTICAL_OFFSET = { x: 0, y: -7 };
+const HUD_LABEL_OPTICAL_OFFSET = { x: -6, y: -12 };
 const MANUAL_LAUNCH_HIT_RADIUS = 108;
 const RESERVE_HIT_WIDTH = 206;
 const RESERVE_HIT_HEIGHT = 178;
@@ -38,6 +39,15 @@ interface TrackPosition {
   x: number;
   y: number;
   side: Side;
+}
+
+interface DebugBounds {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  width: number;
+  height: number;
 }
 
 interface TrackMetrics {
@@ -57,13 +67,6 @@ interface BoardCell {
   pending: boolean;
   cleared: boolean;
   image: Phaser.GameObjects.Image;
-}
-
-interface TreasureState {
-  unlocked: boolean;
-  container: Phaser.GameObjects.Container;
-  row: number;
-  col: number;
 }
 
 interface EdgeTarget {
@@ -141,7 +144,6 @@ export class GameScene extends Phaser.Scene {
   private speedToggleText?: Phaser.GameObjects.Text;
   private coinText?: Phaser.GameObjects.Text;
   private progressFill?: Phaser.GameObjects.Graphics;
-  private treasure?: TreasureState;
   private coins = 10100;
   private totalCells = 0;
   private clearedCells = 0;
@@ -149,6 +151,7 @@ export class GameScene extends Phaser.Scene {
   private speedMultiplier: 1 | 5 = 1;
   private shotLog: Array<{ pigId: string; color: PigColor; side: Side; lineIndex: number; cell: string; distance: number }> = [];
   private reserveLabelDebug: AmmoLabelDebug[] = [];
+  private reserveMotionStarts = new Map<string, { x: number; y: number }>();
   private gameOver = false;
 
   private readonly rows = FIRST_LEVEL.grid.length;
@@ -171,7 +174,7 @@ export class GameScene extends Phaser.Scene {
     this.gameOver = false;
     this.resolvingShooters = [];
     this.reservedTargetKeys.clear();
-    this.treasure = undefined;
+    this.reserveMotionStarts.clear();
     this.coins = 10100;
     this.clearedCells = 0;
     this.speedMultiplier = 1;
@@ -187,7 +190,6 @@ export class GameScene extends Phaser.Scene {
     this.drawHud();
     this.drawTrack();
     this.drawBoard();
-    this.drawTreasure();
     this.drawSlotChrome();
 
     this.reserveLayer = this.add.container(0, 0).setDepth(12);
@@ -302,11 +304,14 @@ export class GameScene extends Phaser.Scene {
     this.speedToggleText = this.add
       .text(HUD_LABEL_OPTICAL_OFFSET.x, HUD_LABEL_OPTICAL_OFFSET.y, '1x', this.compactHudTextStyle(25))
       .setOrigin(0.5, 0.5)
-      .setStroke('#11182b', 3);
+      .setStroke('#0b1020', 4)
+      .setShadow(0, 2, '#050915', 3, false, true);
     this.speedToggleText.setResolution(2);
     const hit = this.add.zone(0, 0, 112, 76).setInteractive({ useHandCursor: true });
     hit.on('pointerdown', () => this.toggleSpeedMultiplier());
-    container.add([shadow, background, rim, gloss, this.speedToggleText, hit]);
+    container.add([shadow, background, rim, gloss, this.speedToggleText]);
+    this.placeHudText(this.speedToggleText);
+    container.add(hit);
   }
 
   private drawActiveCapacityPill(): void {
@@ -320,34 +325,20 @@ export class GameScene extends Phaser.Scene {
     this.activeCapacityText = this.add
       .text(HUD_LABEL_OPTICAL_OFFSET.x, HUD_LABEL_OPTICAL_OFFSET.y, `0-${SLOT_CAPACITY}`, this.capacityTextStyle(26))
       .setOrigin(0.5, 0.5)
-      .setStroke('#11182b', 2);
+      .setStroke('#0b1020', 4)
+      .setShadow(0, 2, '#050915', 3, false, true);
     this.activeCapacityText.setResolution(2);
     container.add(this.activeCapacityText);
+    this.placeHudText(this.activeCapacityText);
   }
 
   private toggleSpeedMultiplier(): void {
     this.speedMultiplier = this.speedMultiplier === 1 ? 5 : 1;
     this.speedToggleText?.setText(`${this.speedMultiplier}x`);
-    this.speedToggleText?.setPosition(HUD_LABEL_OPTICAL_OFFSET.x, HUD_LABEL_OPTICAL_OFFSET.y).setOrigin(0.5, 0.5);
+    if (this.speedToggleText) {
+      this.placeHudText(this.speedToggleText);
+    }
     this.updateDebugState();
-  }
-
-  private drawTreasure(): void {
-    const row = Math.floor(this.rows / 2);
-    const col = Math.floor(this.cols / 2);
-    const x = this.boardX + col * this.cellSize + this.cellSize / 2;
-    const y = this.boardY + row * this.cellSize + this.cellSize / 2;
-    const container = this.add.container(x, y).setDepth(7).setScale(Math.min(0.82, (this.cellSize * 1.16) / 150));
-
-    container.add(this.add.ellipse(10, 50, 170, 38, 0x050915, 0.28));
-    container.add(this.makeRoundRect(158, 100, 22, 0x8b4a17, 0.92, 0x050915, 7, 1, 0, 14));
-    container.add(this.makeRoundRect(174, 56, 22, 0xffc83d, 0.96, 0x8a4c00, 5, 1, 0, -38));
-    container.add(this.add.rectangle(0, 8, 176, 20, 0xffd84a, 0.94).setStrokeStyle(4, 0x8a4c00));
-    container.add(this.add.circle(0, 24, 18, 0xffd84a).setStrokeStyle(5, 0x8a4c00));
-    container.add(this.add.text(0, -3, '+40', this.textStyle(30)).setOrigin(0.5, 0).setStroke('#06101f', 6));
-    container.add(this.add.text(0, 52, 'LOCK', this.textStyle(21)).setOrigin(0.5, 0).setStroke('#06101f', 5));
-    container.setAlpha(0.48);
-    this.treasure = { unlocked: false, container, row, col };
   }
 
   private drawTrack(): void {
@@ -508,8 +499,8 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_CONVEYOR_PLATE_SPACING__ = CONVEYOR_PLATE_SPACING;
     window.__RPIXEL_SPEED_TOGGLE_POSITION__ = SPEED_TOGGLE_POSITION;
     window.__RPIXEL_CAPACITY_LABEL_POSITION__ = CAPACITY_LABEL_POSITION;
-    window.__RPIXEL_CAPACITY_LABEL_BOUNDS__ = this.activeCapacityText ? this.toDebugBounds(this.activeCapacityText.getBounds()) : undefined;
-    window.__RPIXEL_SPEED_LABEL_BOUNDS__ = this.speedToggleText ? this.toDebugBounds(this.speedToggleText.getBounds()) : undefined;
+    window.__RPIXEL_CAPACITY_LABEL_BOUNDS__ = this.activeCapacityText ? this.toDebugBounds(this.getTextVisualWorldBounds(this.activeCapacityText) ?? this.activeCapacityText.getBounds()) : undefined;
+    window.__RPIXEL_SPEED_LABEL_BOUNDS__ = this.speedToggleText ? this.toDebugBounds(this.getTextVisualWorldBounds(this.speedToggleText) ?? this.speedToggleText.getBounds()) : undefined;
     window.__RPIXEL_CAPACITY_LABEL_TARGET__ = { x: CAPACITY_LABEL_POSITION.x + HUD_LABEL_OPTICAL_OFFSET.x, y: CAPACITY_LABEL_POSITION.y + HUD_LABEL_OPTICAL_OFFSET.y };
     window.__RPIXEL_SPEED_LABEL_TARGET__ = { x: SPEED_TOGGLE_POSITION.x + HUD_LABEL_OPTICAL_OFFSET.x, y: SPEED_TOGGLE_POSITION.y + HUD_LABEL_OPTICAL_OFFSET.y };
   }
@@ -594,11 +585,24 @@ export class GameScene extends Phaser.Scene {
     this.visibleReserveEntries().forEach((entry) => {
       const position = this.reservePosition(entry.index);
       const locked = this.isReserveLocked(entry);
-      const token = this.createPigToken(entry.pig, position.x, position.y, 0.9, !locked, () => this.handleReserveClick(entry.index), false, false);
+      const token = this.createPigToken(entry.pig, position.x, position.y, 0.9, !locked, () => this.handleReserveClick(entry.index), false);
       token.setAlpha(locked ? 0.74 : 1);
       this.reserveLayer?.add(token);
+      const motionStart = this.reserveMotionStarts.get(entry.pig.id);
+      if (motionStart) {
+        token.setPosition(motionStart.x, motionStart.y);
+        this.tweens.add({
+          targets: token,
+          x: position.x,
+          y: position.y,
+          alpha: locked ? 0.74 : 1,
+          duration: 240,
+          ease: 'Sine.easeOut',
+        });
+      }
       this.reserveLabelDebug.push(token.ammoLabelDebug(entry.index, entry.pig.id));
     });
+    this.reserveMotionStarts.clear();
     this.renderManualLaunchHitZones();
   }
 
@@ -695,15 +699,27 @@ export class GameScene extends Phaser.Scene {
     }
 
     const reservePosition = this.reservePosition(entry.index);
+    this.captureReserveAdvanceMotion(entry);
     const [pig] = this.reserveColumns[entry.col].splice(entry.row, 1);
     const launchingPig = { ...pig, mystery: false };
-    const token = this.createPigToken(launchingPig, reservePosition.x, reservePosition.y, 0.68, false, undefined, true, false);
+    const token = this.createPigToken(launchingPig, reservePosition.x, reservePosition.y, 0.68, false, undefined, false);
     token.setDepth(24);
 
     this.renderReserve();
     this.launchShooter(launchingPig, token);
 
     this.updateDebugState();
+  }
+
+  private captureReserveAdvanceMotion(entry: ReserveEntry): void {
+    const visibleRows = Math.ceil(RESERVE_VISIBLE / RESERVE_COLS);
+    for (let row = entry.row + 1; row <= visibleRows; row += 1) {
+      const pig = this.reserveColumns[entry.col]?.[row];
+      if (!pig) {
+        continue;
+      }
+      this.reserveMotionStarts.set(pig.id, this.reservePosition(row * RESERVE_COLS + entry.col));
+    }
   }
 
   private isReserveLocked(entry: ReserveEntry): boolean {
@@ -727,6 +743,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private launchShooter(pig: Pig, token: ShooterToken): void {
+    const entryPosition = this.positionOnTrack(0);
     const active: ResolvingShooter = {
       pig,
       container: token,
@@ -740,9 +757,9 @@ export class GameScene extends Phaser.Scene {
     this.resolvingShooters.push(active);
     this.updateDebugState();
 
-    const uploadStart = this.transferUploadStart();
-    const uploadEnd = this.transferUploadEnd();
     const startScale = active.container.scaleX;
+    const startX = active.container.x;
+    const startY = active.container.y;
 
     this.tweens.add({
       targets: active.container,
@@ -752,33 +769,27 @@ export class GameScene extends Phaser.Scene {
       ease: 'Quad.easeInOut',
       onUpdate: () => this.faceTrackSide(active, 'bottom'),
       onComplete: () => {
-        this.tweens.add({
-          targets: active.container,
-          x: uploadStart.x,
-          y: uploadStart.y,
-          scale: 0.78,
-          angle: -3,
-          duration: 210,
-          ease: 'Back.easeOut',
-          onUpdate: () => this.faceTrackSide(active, 'bottom'),
+        this.tweens.addCounter({
+          from: 0,
+          to: 1,
+          duration: 260,
+          ease: 'Sine.easeOut',
+          onUpdate: (tween) => {
+            const progress = Number(tween.getValue());
+            const lift = Math.sin(progress * Math.PI) * 30;
+            active.container.setPosition(Phaser.Math.Linear(startX, entryPosition.x, progress), Phaser.Math.Linear(startY, entryPosition.y, progress) - lift);
+            active.container.setScale(Phaser.Math.Linear(startScale, TRACK_SHOOTER_SCALE, progress));
+            active.container.setAngle(Phaser.Math.Linear(active.container.angle, 0, progress));
+            this.faceTrackSide(active, 'bottom');
+          },
           onComplete: () => {
-            this.tweens.add({
-              targets: active.container,
-              x: uploadEnd.x,
-              y: uploadEnd.y,
-              scale: TRACK_SHOOTER_SCALE,
-              angle: 0,
-              duration: 190,
-              ease: 'Sine.easeInOut',
-              onUpdate: () => this.faceTrackSide(active, 'bottom'),
-              onComplete: () => {
-                active.distance = 0;
-                active.container.setPosition(this.track.startX, this.track.bottom);
-                active.orbiting = true;
-                this.faceTrackSide(active, 'bottom');
-                this.tryFireAtCurrentTrackStep(active);
-              },
-            });
+            active.distance = 0;
+            active.container.setPosition(entryPosition.x, entryPosition.y);
+            active.container.setScale(TRACK_SHOOTER_SCALE);
+            active.container.setAngle(0);
+            active.orbiting = true;
+            this.faceTrackSide(active, 'bottom');
+            this.tryFireAtCurrentTrackStep(active);
           },
         });
       },
@@ -955,50 +966,9 @@ export class GameScene extends Phaser.Scene {
       onComplete: () => cell.image.destroy(),
     });
 
-    this.checkTreasureUnlock();
-
     if (this.clearedCells >= this.totalCells) {
       this.time.delayedCall(260, () => this.showResult(true, `LEVEL ${FIRST_LEVEL.id} COMPLETED!`));
     }
-  }
-
-  private checkTreasureUnlock(): void {
-    if (!this.treasure || this.treasure.unlocked) {
-      return;
-    }
-
-    const uncovered = [-1, 0, 1].every((rowOffset) =>
-      [-1, 0, 1].every((colOffset) => {
-        if (rowOffset === 0 && colOffset === 0) {
-          return true;
-        }
-        const cell = this.cells[this.treasure!.row + rowOffset]?.[this.treasure!.col + colOffset] ?? null;
-        return cell === null || cell.cleared;
-      }),
-    );
-
-    if (!uncovered) {
-      return;
-    }
-
-    this.treasure.unlocked = true;
-    this.tweens.add({ targets: this.treasure.container, alpha: 1, scale: this.treasure.container.scaleX * 1.26, duration: 220, yoyo: true, ease: 'Back.easeOut' });
-    for (let index = 0; index < 14; index += 1) {
-      const sparkle = this.add.star(this.treasure.container.x, this.treasure.container.y, 5, 8, 20, 0xfff1a6, 0.95).setDepth(32);
-      this.tweens.add({
-        targets: sparkle,
-        x: sparkle.x + Phaser.Math.Between(-120, 120),
-        y: sparkle.y + Phaser.Math.Between(-120, 120),
-        angle: Phaser.Math.Between(-180, 180),
-        alpha: 0,
-        scale: 0.2,
-        duration: Phaser.Math.Between(360, 620),
-        ease: 'Quad.easeOut',
-        onComplete: () => sparkle.destroy(),
-      });
-    }
-    this.time.delayedCall(260, () => this.animateCoinsFrom(this.treasure?.container.x ?? this.center.x, this.treasure?.container.y ?? this.center.y, 40));
-    this.updateDebugState();
   }
 
   private animateCoinsFrom(x: number, y: number, amount: number): void {
@@ -1330,10 +1300,9 @@ export class GameScene extends Phaser.Scene {
     scale: number,
     interactive: boolean,
     onClick?: () => void,
-    showBarrel = false,
     mystery = false,
   ): ShooterToken {
-    const token = new ShooterToken(this, { pig, x, y, scale, showBarrel, mystery });
+    const token = new ShooterToken(this, { pig, x, y, scale, mystery });
 
     if (interactive && onClick) {
       this.bindPigTokenClick(token, scale, onClick);
@@ -1666,7 +1635,7 @@ export class GameScene extends Phaser.Scene {
     const right = this.boardX + this.boardWidth + TRACK_PAD;
     const top = this.boardY - TRACK_PAD;
     const bottom = this.boardY + this.boardHeight + TRACK_PAD;
-    const startX = left;
+    const startX = left + TRACK_START_OFFSET;
     const bottomRight = right - startX;
     const rightUp = bottom - top;
     const topLeft = right - left;
@@ -1757,7 +1726,9 @@ export class GameScene extends Phaser.Scene {
   private updateDebugState(): void {
     const activeCapacityLabel = `${this.resolvingShooters.length}-${SLOT_CAPACITY}`;
     this.activeCapacityText?.setText(activeCapacityLabel);
-    this.activeCapacityText?.setPosition(HUD_LABEL_OPTICAL_OFFSET.x, HUD_LABEL_OPTICAL_OFFSET.y).setOrigin(0.5, 0.5);
+    if (this.activeCapacityText) {
+      this.placeHudText(this.activeCapacityText);
+    }
     window.__RPIXEL_CAPACITY_LABEL__ = activeCapacityLabel;
     window.__RPIXEL_ACTIVE_PIGS__ = this.resolvingShooters.length;
     window.__RPIXEL_BLOCKS_LEFT__ = this.totalCells - this.clearedCells;
@@ -1766,7 +1737,7 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_RESERVE_LEFT__ = this.reserveCount();
     const visibleReserve = this.visibleReserveEntries();
     window.__RPIXEL_LOCKED_RESERVE__ = visibleReserve.filter((entry) => this.isReserveLocked(entry)).length;
-    window.__RPIXEL_TREASURE_UNLOCKED__ = Boolean(this.treasure?.unlocked);
+    window.__RPIXEL_TREASURE_UNLOCKED__ = true;
     window.__RPIXEL_COINS__ = this.coins;
     window.__RPIXEL_SPEED_MULTIPLIER__ = this.speedMultiplier;
     window.__RPIXEL_CONVEYOR_OFFSET__ = Number(this.conveyorOffset.toFixed(2));
@@ -1777,8 +1748,8 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_CONVEYOR_PLATE_SPACING__ = CONVEYOR_PLATE_SPACING;
     window.__RPIXEL_SPEED_TOGGLE_POSITION__ = SPEED_TOGGLE_POSITION;
     window.__RPIXEL_CAPACITY_LABEL_POSITION__ = CAPACITY_LABEL_POSITION;
-    window.__RPIXEL_CAPACITY_LABEL_BOUNDS__ = this.activeCapacityText ? this.toDebugBounds(this.activeCapacityText.getBounds()) : undefined;
-    window.__RPIXEL_SPEED_LABEL_BOUNDS__ = this.speedToggleText ? this.toDebugBounds(this.speedToggleText.getBounds()) : undefined;
+    window.__RPIXEL_CAPACITY_LABEL_BOUNDS__ = this.activeCapacityText ? this.toDebugBounds(this.getTextVisualWorldBounds(this.activeCapacityText) ?? this.activeCapacityText.getBounds()) : undefined;
+    window.__RPIXEL_SPEED_LABEL_BOUNDS__ = this.speedToggleText ? this.toDebugBounds(this.getTextVisualWorldBounds(this.speedToggleText) ?? this.speedToggleText.getBounds()) : undefined;
     window.__RPIXEL_CAPACITY_LABEL_TARGET__ = { x: CAPACITY_LABEL_POSITION.x + HUD_LABEL_OPTICAL_OFFSET.x, y: CAPACITY_LABEL_POSITION.y + HUD_LABEL_OPTICAL_OFFSET.y };
     window.__RPIXEL_SPEED_LABEL_TARGET__ = { x: SPEED_TOGGLE_POSITION.x + HUD_LABEL_OPTICAL_OFFSET.x, y: SPEED_TOGGLE_POSITION.y + HUD_LABEL_OPTICAL_OFFSET.y };
     window.__RPIXEL_BOARD_COLOR_COUNTS__ = this.countInitialBoardColors();
@@ -1823,7 +1794,107 @@ export class GameScene extends Phaser.Scene {
     }));
   }
 
-  private toDebugBounds(bounds: Phaser.Geom.Rectangle): { left: number; right: number; top: number; bottom: number; width: number; height: number } {
+  private placeHudText(text: Phaser.GameObjects.Text): void {
+    text.setPosition(HUD_LABEL_OPTICAL_OFFSET.x, HUD_LABEL_OPTICAL_OFFSET.y).setOrigin(0.5, 0.5);
+    this.centerTextVisualBoundsOnLocalTarget(text, HUD_LABEL_OPTICAL_OFFSET);
+  }
+
+  private centerTextVisualBoundsOnLocalTarget(text: Phaser.GameObjects.Text, target: { x: number; y: number }): void {
+    const center = this.getTextVisualWorldCenter(text);
+    if (!center) {
+      return;
+    }
+
+    const parent = text.parentContainer;
+    const centerLocal = parent ? parent.getWorldTransformMatrix().applyInverse(center.x, center.y) : center;
+    const deltaX = target.x - centerLocal.x;
+    const deltaY = target.y - centerLocal.y;
+    if (Number.isFinite(deltaX) && Number.isFinite(deltaY)) {
+      text.setPosition(text.x + deltaX, text.y + deltaY);
+    }
+  }
+
+  private getTextVisualWorldCenter(text: Phaser.GameObjects.Text): { x: number; y: number } | undefined {
+    const bounds = this.getTextVisualCanvasBounds(text);
+    if (!bounds) {
+      return undefined;
+    }
+
+    const resolution = text.style.resolution || 1;
+    const centerX = ((bounds.left + bounds.right + 1) / 2) / resolution - text.displayOriginX;
+    const centerY = ((bounds.top + bounds.bottom + 1) / 2) / resolution - text.displayOriginY;
+    const point = text.getWorldTransformMatrix().transformPoint(centerX, centerY);
+    return { x: point.x, y: point.y };
+  }
+
+  private getTextVisualWorldBounds(text: Phaser.GameObjects.Text): DebugBounds | undefined {
+    const bounds = this.getTextVisualCanvasBounds(text);
+    if (!bounds) {
+      return undefined;
+    }
+
+    const resolution = text.style.resolution || 1;
+    const left = bounds.left / resolution - text.displayOriginX;
+    const right = (bounds.right + 1) / resolution - text.displayOriginX;
+    const top = bounds.top / resolution - text.displayOriginY;
+    const bottom = (bounds.bottom + 1) / resolution - text.displayOriginY;
+    const matrix = text.getWorldTransformMatrix();
+    const points = [
+      matrix.transformPoint(left, top),
+      matrix.transformPoint(right, top),
+      matrix.transformPoint(right, bottom),
+      matrix.transformPoint(left, bottom),
+    ];
+    const xs = points.map((point) => point.x);
+    const ys = points.map((point) => point.y);
+    const worldLeft = Math.min(...xs);
+    const worldRight = Math.max(...xs);
+    const worldTop = Math.min(...ys);
+    const worldBottom = Math.max(...ys);
+    return {
+      left: worldLeft,
+      right: worldRight,
+      top: worldTop,
+      bottom: worldBottom,
+      width: worldRight - worldLeft,
+      height: worldBottom - worldTop,
+    };
+  }
+
+  private getTextVisualCanvasBounds(text: Phaser.GameObjects.Text): { left: number; right: number; top: number; bottom: number } | undefined {
+    const canvas = text.canvas;
+    const context = text.context;
+    const width = canvas.width;
+    const height = canvas.height;
+    if (width <= 0 || height <= 0) {
+      return undefined;
+    }
+
+    const data = context.getImageData(0, 0, width, height).data;
+    let left = width;
+    let right = -1;
+    let top = height;
+    let bottom = -1;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const alpha = data[(y * width + x) * 4 + 3];
+        if (alpha <= 64) {
+          continue;
+        }
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+        top = Math.min(top, y);
+        bottom = Math.max(bottom, y);
+      }
+    }
+
+    if (right < left || bottom < top) {
+      return undefined;
+    }
+    return { left, right, top, bottom };
+  }
+
+  private toDebugBounds(bounds: Phaser.Geom.Rectangle | DebugBounds): DebugBounds {
     return {
       left: Math.round(bounds.left),
       right: Math.round(bounds.right),
