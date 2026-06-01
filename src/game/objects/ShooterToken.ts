@@ -66,28 +66,49 @@ export class ShooterToken extends Phaser.GameObjects.Container {
     this.ammoText.setFontSize(this.ammoFontSize(ammo));
     this.ammoText.setOrigin(0.5, 0.5);
     this.ammoText.setPosition(AMMO_LABEL_CENTER.x, AMMO_LABEL_CENTER.y);
+    this.centerAmmoTextBounds();
   }
 
   ammoLabelDebug(index: number, id: string): AmmoLabelDebug {
-    const center = this.getAmmoTextWorldCenter();
-    const targetX = this.x + AMMO_LABEL_CENTER.x * this.scaleX;
-    const targetY = this.y + AMMO_LABEL_CENTER.y * this.scaleY;
+    const center = this.getAmmoTextBoundsCenter();
+    const target = this.getAmmoLabelWorldCenter();
     return {
       index,
       id,
-      targetX: round1(targetX),
-      targetY: round1(targetY),
+      targetX: round1(target.x),
+      targetY: round1(target.y),
       centerX: round1(center.x),
       centerY: round1(center.y),
-      deltaX: round1(center.x - targetX),
-      deltaY: round1(center.y - targetY),
+      deltaX: round1(center.x - target.x),
+      deltaY: round1(center.y - target.y),
     };
   }
 
-  private getAmmoTextWorldCenter(): { x: number; y: number } {
-    const matrix = this.ammoText.getWorldTransformMatrix();
+  private centerAmmoTextBounds(): void {
+    const center = this.getAmmoTextBoundsCenter();
+    const target = this.getAmmoLabelWorldCenter();
+    const parentMatrix = this.ammoBadge.getWorldTransformMatrix();
+    const centerLocal = parentMatrix.applyInverse(center.x, center.y);
+    const targetLocal = parentMatrix.applyInverse(target.x, target.y);
+    const deltaX = targetLocal.x - centerLocal.x;
+    const deltaY = targetLocal.y - centerLocal.y;
+    if (Number.isFinite(deltaX) && Number.isFinite(deltaY)) {
+      this.ammoText.setPosition(this.ammoText.x + deltaX, this.ammoText.y + deltaY);
+    }
+  }
+
+  private getAmmoLabelWorldCenter(): { x: number; y: number } {
+    const matrix = this.getWorldTransformMatrix();
     const point = matrix.transformPoint(AMMO_LABEL_CENTER.x, AMMO_LABEL_CENTER.y);
     return { x: point.x, y: point.y };
+  }
+
+  private getAmmoTextBoundsCenter(): { x: number; y: number } {
+    const bounds = this.ammoText.getBounds();
+    return {
+      x: (bounds.left + bounds.right) / 2,
+      y: (bounds.top + bounds.bottom) / 2,
+    };
   }
 
   private makeAmmoBadge(): Phaser.GameObjects.Container {
