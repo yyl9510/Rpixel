@@ -22,6 +22,7 @@ interface ShooterTokenOptions {
 }
 
 const AMMO_LABEL_CENTER = { x: 0, y: 0 };
+const AMMO_NUMBER_VISUAL_OFFSET = { x: -14, y: -16 };
 
 export class ShooterToken extends Phaser.GameObjects.Container {
   readonly visualBody: Phaser.GameObjects.Container;
@@ -99,7 +100,7 @@ export class ShooterToken extends Phaser.GameObjects.Container {
 
   private getAmmoLabelWorldCenter(): { x: number; y: number } {
     const matrix = this.getWorldTransformMatrix();
-    const point = matrix.transformPoint(AMMO_LABEL_CENTER.x, AMMO_LABEL_CENTER.y);
+    const point = matrix.transformPoint(AMMO_LABEL_CENTER.x + AMMO_NUMBER_VISUAL_OFFSET.x, AMMO_LABEL_CENTER.y + AMMO_NUMBER_VISUAL_OFFSET.y);
     return { x: point.x, y: point.y };
   }
 
