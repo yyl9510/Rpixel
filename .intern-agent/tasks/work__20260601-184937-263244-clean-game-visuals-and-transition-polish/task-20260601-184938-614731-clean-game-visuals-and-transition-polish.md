@@ -50,3 +50,4 @@ User requested: add smooth transition when waiting-area shooters shift left afte
 - 2026-06-01T18:58:00Z: implemented waiting-slot shift animation and visual cleanup for track, board, reserve, waiting area, and bottom bar.
 - 2026-06-01T19:00:00Z: `npm run check`, `npm run test:smoke`, and lightweight Playwright pixel/debug checks passed.
 - 2026-06-01T18:55:21Z: Clean game visuals and waiting transitions
+  - pushed_commit: aae1631
