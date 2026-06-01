@@ -52,3 +52,4 @@ User requested: make bottom reserve launch area 5 columns aligned vertically wit
 - 2026-06-01T19:18:00Z: implemented 5-column reserve alignment, removed token/reserve shadows, and fixed slot motion tween retargeting.
 - 2026-06-01T19:21:00Z: `npm run check`, `npm run test:smoke`, and a targeted Playwright race-position sample passed.
 - 2026-06-01T19:21:10Z: Align reserve columns and smooth slot retargeting
+  - pushed_commit: 462c2a8
