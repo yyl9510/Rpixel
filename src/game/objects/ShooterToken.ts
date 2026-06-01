@@ -66,11 +66,11 @@ export class ShooterToken extends Phaser.GameObjects.Container {
     this.ammoText.setFontSize(this.ammoFontSize(ammo));
     this.ammoText.setOrigin(0.5, 0.5);
     this.ammoText.setPosition(AMMO_LABEL_CENTER.x, AMMO_LABEL_CENTER.y);
-    this.centerAmmoTextBounds();
+    this.centerAmmoTextVisualBounds();
   }
 
   ammoLabelDebug(index: number, id: string): AmmoLabelDebug {
-    const center = this.getAmmoTextBoundsCenter();
+    const center = this.getAmmoTextVisualCenter();
     const target = this.getAmmoLabelWorldCenter();
     return {
       index,
@@ -84,8 +84,8 @@ export class ShooterToken extends Phaser.GameObjects.Container {
     };
   }
 
-  private centerAmmoTextBounds(): void {
-    const center = this.getAmmoTextBoundsCenter();
+  private centerAmmoTextVisualBounds(): void {
+    const center = this.getAmmoTextVisualCenter();
     const target = this.getAmmoLabelWorldCenter();
     const parentMatrix = this.ammoBadge.getWorldTransformMatrix();
     const centerLocal = parentMatrix.applyInverse(center.x, center.y);
@@ -103,12 +103,56 @@ export class ShooterToken extends Phaser.GameObjects.Container {
     return { x: point.x, y: point.y };
   }
 
-  private getAmmoTextBoundsCenter(): { x: number; y: number } {
+  private getAmmoTextVisualCenter(): { x: number; y: number } {
+    const visualBounds = this.getAmmoTextVisualBounds();
+    if (!visualBounds) {
+      return this.getAmmoTextObjectCenter();
+    }
+
+    const resolution = this.ammoText.style.resolution || 1;
+    const centerX = ((visualBounds.left + visualBounds.right + 1) / 2) / resolution - this.ammoText.displayOriginX;
+    const centerY = ((visualBounds.top + visualBounds.bottom + 1) / 2) / resolution - this.ammoText.displayOriginY;
+    const matrix = this.ammoText.getWorldTransformMatrix();
+    const point = matrix.transformPoint(centerX, centerY);
+    return { x: point.x, y: point.y };
+  }
+
+  private getAmmoTextObjectCenter(): { x: number; y: number } {
     const bounds = this.ammoText.getBounds();
-    return {
-      x: (bounds.left + bounds.right) / 2,
-      y: (bounds.top + bounds.bottom) / 2,
-    };
+    return { x: (bounds.left + bounds.right) / 2, y: (bounds.top + bounds.bottom) / 2 };
+  }
+
+  private getAmmoTextVisualBounds(): { left: number; right: number; top: number; bottom: number } | undefined {
+    const canvas = this.ammoText.canvas;
+    const context = this.ammoText.context;
+    const width = canvas.width;
+    const height = canvas.height;
+    if (width <= 0 || height <= 0) {
+      return undefined;
+    }
+
+    const data = context.getImageData(0, 0, width, height).data;
+    let left = width;
+    let right = -1;
+    let top = height;
+    let bottom = -1;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const alpha = data[(y * width + x) * 4 + 3];
+        if (alpha <= 64) {
+          continue;
+        }
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+        top = Math.min(top, y);
+        bottom = Math.max(bottom, y);
+      }
+    }
+
+    if (right < left || bottom < top) {
+      return undefined;
+    }
+    return { left, right, top, bottom };
   }
 
   private makeAmmoBadge(): Phaser.GameObjects.Container {

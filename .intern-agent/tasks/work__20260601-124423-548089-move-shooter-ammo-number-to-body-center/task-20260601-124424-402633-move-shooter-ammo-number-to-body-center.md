@@ -14,22 +14,34 @@
 用户提供小怪截图并指出小怪上的数字没有在小怪中心，需要把小怪数字的视觉中心移动到小怪身体中心。保持数字仍为 ShooterToken 内部子对象，GameScene 不直接移动数字。
 
 ### Assigned Scope
-- TODO: summarize the agreed scope before delegating or implementing.
+- Move shooter ammo numbers to the visual center of the shooter token body.
+- Keep ammo text owned and laid out inside `ShooterToken`; `GameScene` must not directly position ammo labels.
+- Make debug centering evidence reflect the visible digit pixels, not just the Phaser Text object rectangle.
 
 ### Deliverables
-- TODO: list expected files, artifacts, decisions, or reports.
+- `src/game/objects/ShooterToken.ts`: centers ammo labels by scanning the rendered text canvas alpha bounds and aligning the visible digit center to the token label center.
 
 ### Validation Plan
-- TODO: list tests, commands, source checks, or review criteria.
+- `npm run check`
+- `npm run test:smoke`
+- Local clipped visual sanity check of reserve shooter labels, including a number containing `1`.
 
 ### Constraints And Non-Goals
-- TODO: list constraints such as no restart, no unrelated refactors, file ownership, or deployment limits.
+- No gameplay, level, capacity, or hit-zone changes.
+- Do not reintroduce scene-side ammo label movement.
+- Avoid full-screen screenshot review; use local token clips and debug coordinates.
 
 ### Claimed Output
-- TODO: fill when reporting completion.
+- Ammo text remains a child of `ShooterToken`.
+- `setAmmo()` now aligns the visible pixel bounds of the rendered number to the token center, so strings such as `10`/`15` do not look shifted right because of glyph side bearings.
+- `ammoLabelDebug()` now reports the visible digit center against the token center.
 
 ### Artifacts And Evidence
-- TODO: fill with changed files, commits, generated artifacts, logs, screenshots, or test output.
+- Changed file: `src/game/objects/ShooterToken.ts`.
+- Validation passed: `npm run check` (`tsc --noEmit`, `vite build`).
+- Validation passed: `npm run test:smoke` (8 Playwright tests passed).
+- Local clipped sanity: `/tmp/rpixel-token-0-75.png` and `/tmp/rpixel-token-2-15.png`; debug labels reported `deltaX: 0` and `deltaY: 0` for visible reserve labels after visual-bounds centering.
 
 ## Steps
 - 2026-06-01T12:44:24Z: task created
+- 2026-06-01T12:50:08Z: Center shooter ammo by visible digits
