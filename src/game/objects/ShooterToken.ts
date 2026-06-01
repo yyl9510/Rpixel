@@ -22,7 +22,10 @@ interface ShooterTokenOptions {
 }
 
 const AMMO_LABEL_CENTER = { x: 0, y: 0 };
-const AMMO_NUMBER_VISUAL_OFFSET = { x: -14, y: -16 };
+const AMMO_NUMBER_VISUAL_OFFSETS = {
+  singleDigit: { x: -20, y: -20 },
+  multiDigit: { x: -38, y: -18 },
+};
 
 export class ShooterToken extends Phaser.GameObjects.Container {
   readonly visualBody: Phaser.GameObjects.Container;
@@ -99,9 +102,14 @@ export class ShooterToken extends Phaser.GameObjects.Container {
   }
 
   private getAmmoLabelWorldCenter(): { x: number; y: number } {
+    const offset = this.ammoNumberVisualOffset();
     const matrix = this.getWorldTransformMatrix();
-    const point = matrix.transformPoint(AMMO_LABEL_CENTER.x + AMMO_NUMBER_VISUAL_OFFSET.x, AMMO_LABEL_CENTER.y + AMMO_NUMBER_VISUAL_OFFSET.y);
+    const point = matrix.transformPoint(AMMO_LABEL_CENTER.x + offset.x, AMMO_LABEL_CENTER.y + offset.y);
     return { x: point.x, y: point.y };
+  }
+
+  private ammoNumberVisualOffset(): { x: number; y: number } {
+    return Math.abs(this.ammo) < 10 ? AMMO_NUMBER_VISUAL_OFFSETS.singleDigit : AMMO_NUMBER_VISUAL_OFFSETS.multiDigit;
   }
 
   private getAmmoTextVisualCenter(): { x: number; y: number } {
