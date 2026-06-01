@@ -742,30 +742,43 @@ export class GameScene extends Phaser.Scene {
 
     const uploadStart = this.transferUploadStart();
     const uploadEnd = this.transferUploadEnd();
+    const startScale = active.container.scaleX;
 
     this.tweens.add({
       targets: active.container,
-      x: uploadStart.x,
-      y: uploadStart.y,
-      scale: 0.72,
-      duration: 170,
-      ease: 'Sine.easeOut',
+      scale: startScale * 0.9,
+      duration: 70,
+      yoyo: true,
+      ease: 'Quad.easeInOut',
       onUpdate: () => this.faceTrackSide(active, 'bottom'),
       onComplete: () => {
         this.tweens.add({
           targets: active.container,
-          x: uploadEnd.x,
-          y: uploadEnd.y,
-          scale: TRACK_SHOOTER_SCALE,
-          duration: 150,
-          ease: 'Sine.easeInOut',
+          x: uploadStart.x,
+          y: uploadStart.y,
+          scale: 0.78,
+          angle: -3,
+          duration: 210,
+          ease: 'Back.easeOut',
           onUpdate: () => this.faceTrackSide(active, 'bottom'),
           onComplete: () => {
-            active.distance = 0;
-            active.container.setPosition(this.track.startX, this.track.bottom);
-            active.orbiting = true;
-            this.faceTrackSide(active, 'bottom');
-            this.tryFireAtCurrentTrackStep(active);
+            this.tweens.add({
+              targets: active.container,
+              x: uploadEnd.x,
+              y: uploadEnd.y,
+              scale: TRACK_SHOOTER_SCALE,
+              angle: 0,
+              duration: 190,
+              ease: 'Sine.easeInOut',
+              onUpdate: () => this.faceTrackSide(active, 'bottom'),
+              onComplete: () => {
+                active.distance = 0;
+                active.container.setPosition(this.track.startX, this.track.bottom);
+                active.orbiting = true;
+                this.faceTrackSide(active, 'bottom');
+                this.tryFireAtCurrentTrackStep(active);
+              },
+            });
           },
         });
       },
@@ -880,6 +893,25 @@ export class GameScene extends Phaser.Scene {
     this.updateDebugState();
 
     const style = COLOR_STYLES[cell.color];
+    this.tweens.killTweensOf(cell.image);
+    const flash = this.add.rectangle(cell.image.x, cell.image.y, this.cellSize * 1.05, this.cellSize * 1.05, 0xffffff, 0.58).setDepth(24).setScale(0.25);
+    this.tweens.add({
+      targets: flash,
+      scale: 1.16,
+      alpha: 0,
+      duration: 180,
+      ease: 'Quad.easeOut',
+      onComplete: () => flash.destroy(),
+    });
+    const ring = this.add.circle(cell.image.x, cell.image.y, this.cellSize * 0.38, style.light, 0).setStrokeStyle(5, 0xffffff, 0.6).setDepth(24);
+    this.tweens.add({
+      targets: ring,
+      scale: 1.75,
+      alpha: 0,
+      duration: 260,
+      ease: 'Cubic.easeOut',
+      onComplete: () => ring.destroy(),
+    });
     for (let index = 0; index < 18; index += 1) {
       const particle = this.add.circle(cell.image.x, cell.image.y, Phaser.Math.Between(5, 11), style.light, 0.86).setDepth(25);
       this.tweens.add({
@@ -915,9 +947,10 @@ export class GameScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: cell.image,
-      scale: cell.image.scaleX * 1.25,
+      scale: cell.image.scaleX * 0.08,
       alpha: 0,
-      duration: 110,
+      angle: cell.image.angle + Phaser.Math.Between(-18, 18),
+      duration: 260,
       ease: 'Back.easeIn',
       onComplete: () => cell.image.destroy(),
     });
@@ -999,15 +1032,55 @@ export class GameScene extends Phaser.Scene {
 
     this.releaseReservedTarget(active);
     this.resolvingShooters.splice(index, 1);
+    this.tweens.killTweensOf(active.container);
+    this.emitShooterExhaustBurst(active.container.x, active.container.y, active.pig.color);
     this.tweens.add({
       targets: active.container,
-      scale: 0.15,
-      alpha: 0,
-      duration: 190,
-      ease: 'Back.easeIn',
-      onComplete: () => active.container.destroy(),
+      y: active.container.y + 24,
+      scale: active.container.scaleX * 1.12,
+      angle: active.container.angle + 5,
+      duration: 95,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: active.container,
+          y: active.container.y - 36,
+          scale: 0.18,
+          angle: active.container.angle - 18,
+          alpha: 0,
+          duration: 260,
+          ease: 'Back.easeIn',
+          onComplete: () => active.container.destroy(),
+        });
+      },
     });
     this.updateDebugState();
+  }
+
+  private emitShooterExhaustBurst(x: number, y: number, color: PigColor): void {
+    const style = COLOR_STYLES[color];
+    const ring = this.add.circle(x, y, 42, style.light, 0).setStrokeStyle(6, style.light, 0.7).setDepth(26);
+    this.tweens.add({
+      targets: ring,
+      scale: 2.1,
+      alpha: 0,
+      duration: 320,
+      ease: 'Cubic.easeOut',
+      onComplete: () => ring.destroy(),
+    });
+    for (let index = 0; index < 12; index += 1) {
+      const spark = this.add.circle(x, y, Phaser.Math.Between(5, 10), index % 2 === 0 ? style.light : style.base, 0.9).setDepth(27);
+      this.tweens.add({
+        targets: spark,
+        x: x + Phaser.Math.Between(-80, 80),
+        y: y + Phaser.Math.Between(-70, 70),
+        scale: 0.2,
+        alpha: 0,
+        duration: Phaser.Math.Between(240, 430),
+        ease: 'Quad.easeOut',
+        onComplete: () => spark.destroy(),
+      });
+    }
   }
 
   private resolveCompletedLap(active: ResolvingShooter): void {
@@ -1044,31 +1117,7 @@ export class GameScene extends Phaser.Scene {
     this.slots[slotIndex] = slot;
     this.renderManualLaunchHitZones();
 
-    const exitStart = this.transferExitStart();
-    const exitEnd = this.transferExitEnd();
-    this.tweens.add({
-      targets: active.container,
-      x: exitStart.x,
-      y: exitStart.y,
-      scale: 0.72,
-      duration: 90,
-      ease: 'Quad.easeOut',
-      onUpdate: () => this.faceTrackSide(active, 'bottom'),
-      onComplete: () => {
-        this.tweens.add({
-          targets: active.container,
-          x: exitEnd.x,
-          y: exitEnd.y,
-          scale: 0.72,
-          duration: 140,
-          ease: 'Sine.easeInOut',
-          onUpdate: () => this.faceTrackSide(active, 'bottom'),
-          onComplete: () => {
-            this.tweenEnteringSlotToAssignedPosition(slot, active, 220);
-          },
-        });
-      },
-    });
+    this.tweenEnteringSlotToAssignedPosition(slot, active, 360);
 
     this.updateDebugState();
   }
@@ -1112,8 +1161,9 @@ export class GameScene extends Phaser.Scene {
       ease: 'Sine.easeOut',
       onUpdate: (tween) => {
         const progress = Number(tween.getValue());
+        const arc = Math.sin(progress * Math.PI) * 84;
         const position = this.slotPosition(slot.slotIndex);
-        slot.container.setPosition(Phaser.Math.Linear(startX, position.x, progress), Phaser.Math.Linear(startY, position.y, progress));
+        slot.container.setPosition(Phaser.Math.Linear(startX, position.x, progress), Phaser.Math.Linear(startY, position.y, progress) - arc);
         slot.container.setScale(Phaser.Math.Linear(startScale, WAITING_SHOOTER_SCALE, progress));
         this.faceTrackSide(active, 'bottom');
       },
