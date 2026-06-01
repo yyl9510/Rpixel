@@ -45,3 +45,4 @@
 ## Steps
 - 2026-06-01T17:27:29Z: task created
 - 2026-06-01T17:31:19Z: Polish core gameplay transition animations
+  - pushed_commit: b73a915
