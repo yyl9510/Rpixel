@@ -4,7 +4,7 @@
 - branch: work/20260601-144442-437475-tune-shooter-ammo-offset-by-digit-count
 - branch_slug: work__20260601-144442-437475-tune-shooter-ammo-offset-by-digit-count
 - created_utc: 2026-06-01T14:44:44Z
-- status: active
+- status: complete
 
 ## Description
 用户反馈一位数基本居中但还需略微左上，两个数字时仍未对齐且需要向左移动不少。需要在 ShooterToken 内按位数分别设置数字视觉偏移。
@@ -39,8 +39,15 @@
 - Validation passed: `npm run check` (`tsc --noEmit`, `vite build`).
 - Validation passed: `npm run test:smoke` (8 Playwright tests passed).
 - Local clipped sanity: `/tmp/rpixel-digit-tuned-1-5.png`, `/tmp/rpixel-digit-tuned-2-15.png`, `/tmp/rpixel-digit-tuned-4-5.png`; debug output showed one-digit targets at local `(-20, -20)` and multi-digit targets at local `(-38, -18)` after reserve scaling.
+- Main merge/deploy: merged to `main` at `22ad081`, pushed to `origin/main`, GitHub Pages workflow `26762404663` completed with `success`, and online sanity check passed at `https://yyl9510.github.io/Rpixel/?v=22ad081`.
+- Online debug evidence: one-digit `5` offset from token center is `(-18, -18)` after reserve scaling; two-digit `15` offset is `(-34.2, -16.2)`; `maxLabelDelta: 0`.
 
 ## Steps
 - 2026-06-01T14:44:44Z: task created
+- 2026-06-01T14:48:42Z: Tune shooter ammo offsets by digit count
+  - pushed_commit: 4cfed7c
+- 2026-06-01T14:52:02Z: Verify deployed digit-count offsets and mark task complete
 - 2026-06-01T14:48:15Z: Tune shooter ammo offsets by digit count
   - pushed_commit: 4cfed7c
+- 2026-06-01T14:52:16Z: Record digit-count offset deployment
+  - pushed_commit: d92864d
