@@ -4,7 +4,7 @@
 - branch: work/20260601-191253-808551-align-reserve-columns-and-remove-teleport-transitions
 - branch_slug: work__20260601-191253-808551-align-reserve-columns-and-remove-teleport-transitions
 - created_utc: 2026-06-01T19:12:54Z
-- status: active
+- status: complete
 
 ## Description
 User requested: make bottom reserve launch area 5 columns aligned vertically with the 5 waiting slots; reserve column count later configurable but set to 5 now; remove unnecessary black shadows/background colors in reserve/waiting/field so only core objects remain; fix teleport when a returning shooter and a clicked waiting shooter overlap timing; audit and remove other abrupt teleport-like transitions.
@@ -51,5 +51,7 @@ User requested: make bottom reserve launch area 5 columns aligned vertically wit
 - 2026-06-01T19:12:54Z: task created
 - 2026-06-01T19:18:00Z: implemented 5-column reserve alignment, removed token/reserve shadows, and fixed slot motion tween retargeting.
 - 2026-06-01T19:21:00Z: `npm run check`, `npm run test:smoke`, and a targeted Playwright race-position sample passed.
+- 2026-06-01T19:22:00Z: marked task complete after validation and branch push.
 - 2026-06-01T19:21:10Z: Align reserve columns and smooth slot retargeting
   - pushed_commit: 462c2a8
+- 2026-06-01T19:21:28Z: Mark reserve alignment task complete
