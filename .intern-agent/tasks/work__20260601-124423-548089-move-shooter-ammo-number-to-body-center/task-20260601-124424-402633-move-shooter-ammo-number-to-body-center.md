@@ -4,7 +4,7 @@
 - branch: work/20260601-124423-548089-move-shooter-ammo-number-to-body-center
 - branch_slug: work__20260601-124423-548089-move-shooter-ammo-number-to-body-center
 - created_utc: 2026-06-01T12:44:24Z
-- status: active
+- status: complete
 
 ## Description
 用户提供小怪截图并指出小怪上的数字没有在小怪中心，需要把小怪数字的视觉中心移动到小怪身体中心。保持数字仍为 ShooterToken 内部子对象，GameScene 不直接移动数字。
@@ -41,8 +41,15 @@
 - Validation passed: `npm run check` (`tsc --noEmit`, `vite build`).
 - Validation passed: `npm run test:smoke` (8 Playwright tests passed).
 - Local clipped sanity: `/tmp/rpixel-token-0-75.png` and `/tmp/rpixel-token-2-15.png`; debug labels reported `deltaX: 0` and `deltaY: 0` for visible reserve labels after visual-bounds centering.
+- Main merge/deploy: merged to `main` at `f03af69`, pushed to `origin/main`, GitHub Pages workflow `26755963860` completed with `success`, and online sanity check passed at `https://yyl9510.github.io/Rpixel/?v=f03af69`.
+- Online debug evidence: deployed asset `index-BM1CrVbd.js` contains the visible-bounds centering path (`getImageData`); Playwright debug check reported 6 visible reserve labels and `maxLabelDelta: 0`.
 
 ## Steps
 - 2026-06-01T12:44:24Z: task created
+- 2026-06-01T12:50:30Z: Center shooter ammo by visible digits
+  - pushed_commit: fca6ef7
+- 2026-06-01T12:54:18Z: Verify deployed visible-digit centering and mark task complete
 - 2026-06-01T12:50:08Z: Center shooter ammo by visible digits
   - pushed_commit: fca6ef7
+- 2026-06-01T12:54:03Z: Record visible-digit centering deployment
+  - pushed_commit: b587c7c
