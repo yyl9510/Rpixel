@@ -53,3 +53,4 @@ User requested: add smooth transition when waiting-area shooters shift left afte
 - 2026-06-01T18:55:21Z: Clean game visuals and waiting transitions
   - pushed_commit: aae1631
 - 2026-06-01T18:55:37Z: Mark clean visual polish task complete
+  - pushed_commit: 33dfc53
