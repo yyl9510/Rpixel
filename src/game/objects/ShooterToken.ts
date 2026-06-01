@@ -38,7 +38,6 @@ export class ShooterToken extends Phaser.GameObjects.Container {
     scene.add.existing(this);
     this.setScale(options.scale);
 
-    const shadow = scene.add.ellipse(10, 30, 166, 66, 0x050915, 0.42);
     this.visualBody = scene.add.container(0, 0);
     const image = options.mystery ? this.makeMysteryToken() : scene.add.image(0, 0, `shooter-${options.pig.color}`);
     this.visualBody.add(image);
@@ -54,7 +53,7 @@ export class ShooterToken extends Phaser.GameObjects.Container {
 
     const showAmmo = !options.mystery;
     this.ammoBadge.setVisible(showAmmo);
-    this.add([shadow, this.visualBody, this.ammoBadge]);
+    this.add([this.visualBody, this.ammoBadge]);
     this.setAmmo(options.pig.ammo);
   }
 

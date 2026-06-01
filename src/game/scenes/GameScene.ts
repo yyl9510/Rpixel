@@ -12,8 +12,8 @@ const BOARD_BOX_HEIGHT = 840;
 const BOARD_TOP = 270;
 const TRACK_PAD = 116;
 const SLOT_Y = 1360;
-const RESERVE_VISIBLE = 6;
-const RESERVE_COLS = 3;
+const RESERVE_VISIBLE = 10;
+const RESERVE_COLS = SLOT_CAPACITY;
 const TRACK_SPEED = 820;
 const CONVEYOR_SCROLL_SPEED = 96;
 const CONVEYOR_FAST_MULTIPLIER = 1.35;
@@ -26,7 +26,7 @@ const CAPACITY_LABEL_POSITION = { x: 350, y: 82 };
 const CAPACITY_PILL_SIZE = { width: 150, height: 62 };
 const HUD_LABEL_OPTICAL_OFFSET = { x: -6, y: -12 };
 const MANUAL_LAUNCH_HIT_RADIUS = 108;
-const RESERVE_HIT_WIDTH = 206;
+const RESERVE_HIT_WIDTH = 178;
 const RESERVE_HIT_HEIGHT = 178;
 const WAITING_HIT_WIDTH = 178;
 const WAITING_HIT_HEIGHT = 170;
@@ -100,6 +100,7 @@ interface SlotShooter {
   pig: Pig;
   container: ShooterToken;
   body: Phaser.GameObjects.Container;
+  moveTween?: Phaser.Tweens.Tween;
 }
 
 type ManualLaunchTarget = { type: 'reserve'; index: number } | { type: 'waiting'; index: number };
@@ -198,6 +199,7 @@ export class GameScene extends Phaser.Scene {
 
     [...this.resolvingShooters].forEach((active) => this.updateResolvingShooter(active, delta));
     this.publishActiveShooterDebug();
+    this.publishWaitingDebug();
   }
 
   private drawBackground(): void {
@@ -405,9 +407,7 @@ export class GameScene extends Phaser.Scene {
     this.slotChromeLayer = this.add.container(0, 0).setDepth(10);
     for (let index = 0; index < SLOT_CAPACITY; index += 1) {
       const position = this.slotPosition(index);
-      this.slotChromeLayer.add(this.add.ellipse(position.x + 4, position.y + 24, 160, 44, 0x050915, 0.18));
-      this.slotChromeLayer.add(this.makeRoundRect(154, 146, 28, 0x171d34, 0.78, 0x9fb0ca, 2, 0.22, position.x, position.y));
-      this.slotChromeLayer.add(this.makeRoundRect(120, 112, 24, 0x343b5c, 0.46, undefined, 0, 1, position.x, position.y));
+      this.slotChromeLayer.add(this.makeRoundRect(150, 142, 28, 0x050915, 0.08, 0xdce7ff, 2, 0.12, position.x, position.y));
     }
   }
 
@@ -418,8 +418,6 @@ export class GameScene extends Phaser.Scene {
 
     this.reserveLabelDebug = [];
     this.reserveLayer.removeAll(true);
-    this.reserveLayer.add(this.add.ellipse(540, 1636, 650, 286, 0x050915, 0.14));
-    this.reserveLayer.add(this.makeRoundRect(628, 300, 54, 0x151b32, 0.42, 0xffffff, 2, 0.06, 540, 1606));
 
     this.visibleReserveEntries().forEach((entry) => {
       const position = this.reservePosition(entry.index);
@@ -570,6 +568,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    this.stopSlotMotion(slot);
     this.tweens.killTweensOf(slot.container);
     slot.status = 'activating';
     this.slots[slot.slotIndex] = null;
@@ -955,8 +954,8 @@ export class GameScene extends Phaser.Scene {
     const startX = slot.container.x;
     const startY = slot.container.y;
     const startScale = slot.container.scaleX;
-    this.tweens.killTweensOf(slot.container);
-    this.tweens.addCounter({
+    this.stopSlotMotion(slot);
+    slot.moveTween = this.tweens.addCounter({
       from: 0,
       to: 1,
       duration: 280,
@@ -969,6 +968,7 @@ export class GameScene extends Phaser.Scene {
         slot.container.setScale(Phaser.Math.Linear(startScale, WAITING_SHOOTER_SCALE, progress) * (1 + settle));
       },
       onComplete: () => {
+        slot.moveTween = undefined;
         if (this.slots[slot.slotIndex] !== slot) {
           return;
         }
@@ -979,24 +979,54 @@ export class GameScene extends Phaser.Scene {
   }
 
   private tweenEnteringSlotToAssignedPosition(slot: SlotShooter, active: ResolvingShooter, duration: number): void {
-    const startX = slot.container.x;
-    const startY = slot.container.y;
-    const startScale = slot.container.scaleX;
-    this.tweens.addCounter({
+    this.stopSlotMotion(slot);
+    slot.moveTween = this.tweens.addCounter({
       from: 0,
       to: 1,
       duration,
       ease: 'Sine.easeOut',
       onUpdate: (tween) => {
         const progress = Number(tween.getValue());
-        const arc = Math.sin(progress * Math.PI) * 84;
+        const arc = Math.sin(progress * Math.PI) * 70;
         const position = this.slotPosition(slot.slotIndex);
-        slot.container.setPosition(Phaser.Math.Linear(startX, position.x, progress), Phaser.Math.Linear(startY, position.y, progress) - arc);
-        slot.container.setScale(Phaser.Math.Linear(startScale, WAITING_SHOOTER_SCALE, progress));
+        slot.container.setPosition(Phaser.Math.Linear(slot.container.x, position.x, 0.18), Phaser.Math.Linear(slot.container.y, position.y - arc, 0.18));
+        slot.container.setScale(Phaser.Math.Linear(slot.container.scaleX, WAITING_SHOOTER_SCALE, 0.18));
         this.faceTrackSide(active, 'bottom');
       },
-      onComplete: () => this.completeEnteringSlot(slot),
+      onComplete: () => {
+        slot.moveTween = undefined;
+        this.settleEnteringSlot(slot, active);
+      },
     });
+  }
+
+  private settleEnteringSlot(slot: SlotShooter, active: ResolvingShooter): void {
+    if (this.gameOver || this.slots[slot.slotIndex] !== slot) {
+      return;
+    }
+
+    this.stopSlotMotion(slot);
+    slot.moveTween = this.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: 160,
+      ease: 'Sine.easeOut',
+      onUpdate: () => {
+        const position = this.slotPosition(slot.slotIndex);
+        slot.container.setPosition(Phaser.Math.Linear(slot.container.x, position.x, 0.24), Phaser.Math.Linear(slot.container.y, position.y, 0.24));
+        slot.container.setScale(Phaser.Math.Linear(slot.container.scaleX, WAITING_SHOOTER_SCALE, 0.24));
+        this.faceTrackSide(active, 'bottom');
+      },
+      onComplete: () => {
+        slot.moveTween = undefined;
+        this.completeEnteringSlot(slot);
+      },
+    });
+  }
+
+  private stopSlotMotion(slot: SlotShooter): void {
+    slot.moveTween?.stop();
+    slot.moveTween = undefined;
   }
 
   private completeEnteringSlot(slot: SlotShooter): void {
@@ -1554,7 +1584,7 @@ export class GameScene extends Phaser.Scene {
   private reservePosition(index: number): { x: number; y: number } {
     const col = index % RESERVE_COLS;
     const row = Math.floor(index / RESERVE_COLS);
-    return { x: 320 + col * 220, y: 1538 + row * 148 };
+    return { x: this.slotPosition(col).x, y: 1538 + row * 148 };
   }
 
   private faceTrackSide(active: ResolvingShooter, side = active.currentSide): void {
@@ -1625,13 +1655,7 @@ export class GameScene extends Phaser.Scene {
       return { index: entry.index, row: entry.row, col: entry.col, id: entry.pig.id, color: entry.pig.color, ammo: entry.pig.ammo, locked: this.isReserveLocked(entry), x: position.x, y: position.y };
     });
     window.__RPIXEL_VISIBLE_RESERVE_LABELS__ = this.reserveLabelDebug;
-    window.__RPIXEL_VISIBLE_WAITING__ = this.slots.flatMap((slot, index) => {
-      if (!slot) {
-        return [];
-      }
-      const position = this.slotPosition(index);
-      return [{ index, id: slot.pig.id, color: slot.pig.color, status: slot.status, ammo: slot.pig.ammo, x: position.x, y: position.y, actualX: Math.round(slot.container.x), actualY: Math.round(slot.container.y) }];
-    });
+    this.publishWaitingDebug();
     window.__RPIXEL_SHOT_LOG__ = [...this.shotLog];
     this.publishActiveShooterDebug();
     window.__RPIXEL_EXPOSED_COLORS__ = this.getExposedColors();
@@ -1650,6 +1674,16 @@ export class GameScene extends Phaser.Scene {
       pendingShots: active.pendingShots,
       completedLap: active.completedLap,
     }));
+  }
+
+  private publishWaitingDebug(): void {
+    window.__RPIXEL_VISIBLE_WAITING__ = this.slots.flatMap((slot, index) => {
+      if (!slot) {
+        return [];
+      }
+      const position = this.slotPosition(index);
+      return [{ index, id: slot.pig.id, color: slot.pig.color, status: slot.status, ammo: slot.pig.ammo, x: position.x, y: position.y, actualX: Math.round(slot.container.x), actualY: Math.round(slot.container.y) }];
+    });
   }
 
   private placeHudText(text: Phaser.GameObjects.Text): void {
