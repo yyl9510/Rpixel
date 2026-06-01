@@ -4,7 +4,7 @@
 - branch: work/20260601-152326-074381-retune-shooter-ammo-horizontal-offsets
 - branch_slug: work__20260601-152326-074381-retune-shooter-ammo-horizontal-offsets
 - created_utc: 2026-06-01T15:23:26Z
-- status: active
+- status: complete
 
 ## Description
 用户反馈当前一位数字偏左、两个数字过左。需要在 ShooterToken 内把一位数和多位数的横向偏移都向右收，保持数字仍为 token 内部子对象。
@@ -38,8 +38,14 @@
 - Validation passed: `npm run check` (`tsc --noEmit`, `vite build`).
 - Validation passed: `npm run test:smoke` (8 Playwright tests passed).
 - Local debug evidence: one-digit `5` offset changed to `(-14.4, -18)` after reserve scaling; two-digit `15` offset changed to `(-25.2, -16.2)`.
+- Main merge/deploy: merged to `main` at `011c112`, pushed to `origin/main`, GitHub Pages workflow `26764553222` completed with `success`, and online sanity check passed at `https://yyl9510.github.io/Rpixel/?v=011c112`.
+- Online debug evidence: one-digit `5` offset is `(-14.4, -18)`; two-digit `15` offset is `(-25.2, -16.2)`; `maxLabelDelta: 0`.
 
 ## Steps
 - 2026-06-01T15:23:26Z: task created
+- 2026-06-01T15:26:08Z: Retune shooter ammo horizontal offsets
+  - pushed_commit: e492ad1
+- 2026-06-01T15:29:46Z: Verify deployed retuned horizontal offsets and mark task complete
 - 2026-06-01T15:26:16Z: Retune shooter ammo horizontal offsets
   - pushed_commit: e492ad1
+- 2026-06-01T15:30:34Z: Record retuned offset deployment
