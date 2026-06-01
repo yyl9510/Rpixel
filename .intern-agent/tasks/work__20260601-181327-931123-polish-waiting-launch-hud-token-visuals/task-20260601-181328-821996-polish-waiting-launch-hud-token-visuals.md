@@ -55,3 +55,4 @@ User requested six gameplay polish fixes: animate reserve column items moving fo
 - 2026-06-01T18:22:41Z: Polish waiting launch hud token visuals
   - pushed_commit: ab6d5d4
 - 2026-06-01T18:23:10Z: Mark visual polish task complete
+  - pushed_commit: cc8ad63
