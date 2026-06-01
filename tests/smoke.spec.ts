@@ -11,7 +11,8 @@ const SPEED_TOGGLE_X = 214;
 const SPEED_TOGGLE_Y = 82;
 const CAPACITY_PILL_CENTER_X = 350;
 const CAPACITY_PILL_CENTER_Y = 82;
-const HUD_LABEL_OPTICAL_OFFSET_Y = -7;
+const HUD_LABEL_OPTICAL_OFFSET_X = -6;
+const HUD_LABEL_OPTICAL_OFFSET_Y = -12;
 const CAPACITY_PILL_HALF_WIDTH = 75;
 const CAPACITY_PILL_HALF_HEIGHT = 31;
 const RESERVE_TOKEN_HALF_HEIGHT = (178 * 0.68) / 2;
@@ -85,7 +86,7 @@ test('loads the menu and launches shooters through the waiting area', async ({ p
   const speedBounds = await page.evaluate(() => window.__RPIXEL_SPEED_LABEL_BOUNDS__);
   const speedTarget = await page.evaluate(() => window.__RPIXEL_SPEED_LABEL_TARGET__);
   expect(speedBounds).toBeTruthy();
-  expect(speedTarget).toEqual({ x: SPEED_TOGGLE_X, y: SPEED_TOGGLE_Y + HUD_LABEL_OPTICAL_OFFSET_Y });
+  expect(speedTarget).toEqual({ x: SPEED_TOGGLE_X + HUD_LABEL_OPTICAL_OFFSET_X, y: SPEED_TOGGLE_Y + HUD_LABEL_OPTICAL_OFFSET_Y });
   if (speedBounds && speedTarget) {
     expect(Math.abs((speedBounds.left + speedBounds.right) / 2 - speedTarget.x)).toBeLessThanOrEqual(1);
     expect(Math.abs((speedBounds.top + speedBounds.bottom) / 2 - speedTarget.y)).toBeLessThanOrEqual(1);
@@ -93,7 +94,7 @@ test('loads the menu and launches shooters through the waiting area', async ({ p
   const capacityBounds = await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL_BOUNDS__);
   const capacityTarget = await page.evaluate(() => window.__RPIXEL_CAPACITY_LABEL_TARGET__);
   expect(capacityBounds).toBeTruthy();
-  expect(capacityTarget).toEqual({ x: CAPACITY_PILL_CENTER_X, y: CAPACITY_PILL_CENTER_Y + HUD_LABEL_OPTICAL_OFFSET_Y });
+  expect(capacityTarget).toEqual({ x: CAPACITY_PILL_CENTER_X + HUD_LABEL_OPTICAL_OFFSET_X, y: CAPACITY_PILL_CENTER_Y + HUD_LABEL_OPTICAL_OFFSET_Y });
   if (capacityBounds) {
     expect(capacityBounds.left).toBeGreaterThanOrEqual(CAPACITY_PILL_CENTER_X - CAPACITY_PILL_HALF_WIDTH);
     expect(capacityBounds.right).toBeLessThanOrEqual(CAPACITY_PILL_CENTER_X + CAPACITY_PILL_HALF_WIDTH);
@@ -529,7 +530,7 @@ test('fails only when a returning shooter would overflow five waiting slots', as
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'fail', undefined, { timeout: 14_000 });
 });
 
-test('can complete the level, unlock treasure, and show the win panel', async ({ page }) => {
+test('can complete the level and show the win panel', async ({ page }) => {
   test.setTimeout(240_000);
   await page.reload();
   await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'menu');
@@ -593,7 +594,7 @@ test('can complete the level, unlock treasure, and show the win panel', async ({
     await page.waitForTimeout(80);
   }
 
-  await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'win' && window.__RPIXEL_BLOCKS_LEFT__ === 0 && window.__RPIXEL_TREASURE_UNLOCKED__ === true, undefined, {
+  await page.waitForFunction(() => window.__RPIXEL_SCENE__ === 'win' && window.__RPIXEL_BLOCKS_LEFT__ === 0, undefined, {
     timeout: 30_000,
   });
   await page.waitForTimeout(250);

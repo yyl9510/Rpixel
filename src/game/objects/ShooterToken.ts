@@ -17,7 +17,6 @@ interface ShooterTokenOptions {
   x: number;
   y: number;
   scale: number;
-  showBarrel?: boolean;
   mystery?: boolean;
 }
 
@@ -41,21 +40,16 @@ export class ShooterToken extends Phaser.GameObjects.Container {
 
     const shadow = scene.add.ellipse(10, 30, 166, 66, 0x050915, 0.42);
     this.visualBody = scene.add.container(0, 0);
-    const barrel = scene.add.rectangle(0, -84, 30, 68, 0x242a3d).setStrokeStyle(5, 0x050915);
-    const barrelTip = scene.add.circle(0, -120, 18, 0x5c6684).setStrokeStyle(5, 0x050915);
-    barrel.setVisible(Boolean(options.showBarrel));
-    barrelTip.setVisible(Boolean(options.showBarrel));
-
     const image = options.mystery ? this.makeMysteryToken() : scene.add.image(0, 0, `shooter-${options.pig.color}`);
-    this.visualBody.add([barrel, barrelTip, image]);
+    this.visualBody.add(image);
 
     this.ammoBadge = this.makeAmmoBadge();
     this.ammoText = scene.add
       .text(AMMO_LABEL_CENTER.x, AMMO_LABEL_CENTER.y, '', this.ammoTextStyle(this.ammoFontSize(options.pig.ammo)))
       .setOrigin(0.5, 0.5)
-      .setStroke('#071122', 2);
+      .setStroke('#2b1605', 4);
     this.ammoText.setResolution(3);
-    this.ammoText.setShadow(0, 1, '#050915', 2, false, true);
+    this.ammoText.setShadow(0, 2, '#050915', 3, false, true);
     this.ammoBadge.add(this.ammoText);
 
     const showAmmo = !options.mystery;
@@ -216,9 +210,9 @@ export class ShooterToken extends Phaser.GameObjects.Container {
 
   private ammoTextStyle(fontSize: number): Phaser.Types.GameObjects.Text.TextStyle {
     return {
-      fontFamily: 'Arial Rounded MT Bold, Arial Black, Arial, sans-serif',
+      fontFamily: 'Trebuchet MS, Arial Rounded MT Bold, Arial Black, Arial, sans-serif',
       fontSize: `${fontSize}px`,
-      color: '#fff4c8',
+      color: '#fff2b8',
       align: 'center',
     };
   }
