@@ -4,7 +4,7 @@
 - branch: work/20260601-140928-302570-shift-shooter-ammo-number-up-left
 - branch_slug: work__20260601-140928-302570-shift-shooter-ammo-number-up-left
 - created_utc: 2026-06-01T14:09:29Z
-- status: active
+- status: complete
 
 ## Description
 用户反馈数字依然在右下方，要求把小怪上的数字直接移动到左上方。需要在 ShooterToken 内部加入明确的视觉偏移，保持数字仍是 token 子对象。
@@ -38,8 +38,14 @@
 - Validation passed: `npm run check` (`tsc --noEmit`, `vite build`).
 - Validation passed: `npm run test:smoke` (8 Playwright tests passed).
 - Local clipped sanity: `/tmp/rpixel-up-left-0-75.png` and `/tmp/rpixel-up-left-2-15.png`; debug target moved to the left/up visual point and reported `deltaX: 0`, `deltaY: 0`.
+- Main merge/deploy: merged to `main` at `7f6317d`, pushed to `origin/main`, GitHub Pages workflow `26760358722` completed with `success`, and online sanity check passed at `https://yyl9510.github.io/Rpixel/?v=7f6317d`.
+- Online debug evidence: first reserve token center is `(320, 1538)` while the shifted number center is `(307.4, 1523.6)`; third reserve token center is `(760, 1538)` while the shifted number center is `(747.4, 1523.6)`; `maxLabelDelta: 0`.
 
 ## Steps
 - 2026-06-01T14:09:29Z: task created
+- 2026-06-01T14:12:15Z: Shift shooter ammo number up left
+  - pushed_commit: 93b938f
+- 2026-06-01T14:16:30Z: Verify deployed up-left ammo number shift and mark task complete
 - 2026-06-01T14:12:33Z: Shift shooter ammo number up left
   - pushed_commit: 93b938f
+- 2026-06-01T14:17:28Z: Record deployed up-left ammo shift
