@@ -52,3 +52,4 @@ User requested six gameplay polish fixes: animate reserve column items moving fo
 - 2026-06-01T18:29:00Z: implemented reserve/launch/HUD/token visual polish and removed playfield treasure.
 - 2026-06-01T18:31:00Z: `npm run check` and `npm run test:smoke` passed; Playwright debug coordinate check completed without screenshots.
 - 2026-06-01T18:22:41Z: Polish waiting launch hud token visuals
+  - pushed_commit: ab6d5d4
