@@ -49,3 +49,4 @@
 - 2026-06-01T14:12:33Z: Shift shooter ammo number up left
   - pushed_commit: 93b938f
 - 2026-06-01T14:17:28Z: Record deployed up-left ammo shift
+  - pushed_commit: f9a3b63
