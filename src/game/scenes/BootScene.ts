@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { createGeneratedAssets, preloadGeminiAssets } from '../assets';
+import { createGeneratedAssets, preloadGeminiAssets, preloadGptAssets } from '../assets';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -7,6 +7,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
+    preloadGptAssets(this);
     preloadGeminiAssets(this);
   }
 
@@ -15,4 +16,3 @@ export class BootScene extends Phaser.Scene {
     this.scene.start('MenuScene');
   }
 }
-
