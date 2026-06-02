@@ -51,3 +51,4 @@ Fix asset Git LFS tracking after image assets were pushed with absolute .gitattr
 ## Steps
 - 2026-06-02T06:43:00Z: task created
 - 2026-06-02T06:45:16Z: Fix asset Git LFS tracking
+  - pushed_commit: f61ce7e
