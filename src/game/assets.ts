@@ -47,6 +47,7 @@ interface ProcessTextureOptions {
   padding?: number;
   tint?: number;
   trim?: boolean;
+  keepLargestComponent?: boolean;
 }
 
 const GEMINI_TEXTURE_PREFIX = 'gemini-source';
@@ -143,6 +144,7 @@ function createGeminiAssetTextures(scene: Phaser.Scene): void {
   createProcessedTexture(scene, 'gemini-track-frame', 'track', GEMINI_UI_FRAMES.trackFrame.frame, {
     trim: false,
     padding: 0,
+    keepLargestComponent: true,
   });
   createProcessedTexture(scene, 'gemini-waiting-slot-frame', 'waitingSlot', GEMINI_UI_FRAMES.waitingSlotFrame.frame, GEMINI_UI_FRAMES.waitingSlotFrame);
 
@@ -187,6 +189,9 @@ function createProcessedTexture(
   cropContext.drawImage(source, frame.x, frame.y, frame.width, frame.height, 0, 0, frame.width, frame.height);
   const imageData = cropContext.getImageData(0, 0, frame.width, frame.height);
   processGeminiPixels(imageData, options.tint);
+  if (options.keepLargestComponent) {
+    keepLargestAlphaComponent(imageData);
+  }
   cropContext.putImageData(imageData, 0, 0);
 
   const shouldTrim = options.trim !== false;
@@ -251,6 +256,61 @@ function processGeminiPixels(imageData: ImageData, tint?: number): void {
 function isGeminiCheckerPixel(r: number, g: number, b: number): boolean {
   const average = (r + g + b) / 3;
   return Math.max(r, g, b) - Math.min(r, g, b) <= 8 && average >= 125 && average <= 225;
+}
+
+function keepLargestAlphaComponent(imageData: ImageData): void {
+  const { data, width, height } = imageData;
+  const visited = new Uint8Array(width * height);
+  let largest: number[] = [];
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const start = y * width + x;
+      if (visited[start] || data[start * 4 + 3] <= 24) {
+        continue;
+      }
+
+      const component: number[] = [];
+      const stack = [start];
+      visited[start] = 1;
+      while (stack.length > 0) {
+        const current = stack.pop();
+        if (current === undefined) {
+          continue;
+        }
+        component.push(current);
+        const cx = current % width;
+        const cy = Math.floor(current / width);
+        const neighbors = [current - 1, current + 1, current - width, current + width];
+        for (const next of neighbors) {
+          if (next < 0 || next >= width * height || visited[next] || data[next * 4 + 3] <= 24) {
+            continue;
+          }
+          const nx = next % width;
+          const ny = Math.floor(next / width);
+          if (Math.abs(nx - cx) + Math.abs(ny - cy) !== 1) {
+            continue;
+          }
+          visited[next] = 1;
+          stack.push(next);
+        }
+      }
+
+      if (component.length > largest.length) {
+        largest = component;
+      }
+    }
+  }
+
+  const keep = new Uint8Array(width * height);
+  largest.forEach((index) => {
+    keep[index] = 1;
+  });
+  for (let index = 0; index < width * height; index += 1) {
+    if (!keep[index]) {
+      data[index * 4 + 3] = 0;
+    }
+  }
 }
 
 function alphaBounds(imageData: ImageData): { x: number; y: number; width: number; height: number } | undefined {
