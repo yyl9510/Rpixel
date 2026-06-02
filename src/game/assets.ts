@@ -30,6 +30,33 @@ const GEMINI_ASSET_SOURCES = {
 
 type GeminiSheetKey = keyof typeof GEMINI_ASSET_SOURCES;
 
+const GPT_ASSET_SOURCES = {
+  blockBlue: new URL('../../GPT_rpixel_assets/block_blue.png', import.meta.url).href,
+  blockCyan: new URL('../../GPT_rpixel_assets/block_cyan.png', import.meta.url).href,
+  blockPink: new URL('../../GPT_rpixel_assets/block_pink.png', import.meta.url).href,
+  blockPurple: new URL('../../GPT_rpixel_assets/block_purple.png', import.meta.url).href,
+  blockWhite: new URL('../../GPT_rpixel_assets/block_white.png', import.meta.url).href,
+  blockYellow: new URL('../../GPT_rpixel_assets/block_yellow.png', import.meta.url).href,
+  buttonBaseRed: new URL('../../GPT_rpixel_assets/button_base_red.png', import.meta.url).href,
+  hudCoin: new URL('../../GPT_rpixel_assets/hud_coin_256.png', import.meta.url).href,
+  hudGear: new URL('../../GPT_rpixel_assets/hud_gear_256.png', import.meta.url).href,
+  hudPlus: new URL('../../GPT_rpixel_assets/hud_plus_256.png', import.meta.url).href,
+  iconAddCard: new URL('../../GPT_rpixel_assets/icon_add_card.png', import.meta.url).href,
+  iconRefresh: new URL('../../GPT_rpixel_assets/icon_refresh.png', import.meta.url).href,
+  iconRocketSnail: new URL('../../GPT_rpixel_assets/icon_rocket_snail.png', import.meta.url).href,
+  iconTap: new URL('../../GPT_rpixel_assets/icon_tap.png', import.meta.url).href,
+  monsterBlue: new URL('../../GPT_rpixel_assets/monster_blue.png', import.meta.url).href,
+  monsterCyan: new URL('../../GPT_rpixel_assets/monster_cyan.png', import.meta.url).href,
+  monsterPink: new URL('../../GPT_rpixel_assets/monster_pink.png', import.meta.url).href,
+  monsterPurple: new URL('../../GPT_rpixel_assets/monster_purple.png', import.meta.url).href,
+  monsterWhite: new URL('../../GPT_rpixel_assets/monster_white.png', import.meta.url).href,
+  monsterYellow: new URL('../../GPT_rpixel_assets/monster_yellow.png', import.meta.url).href,
+  trackFrame: new URL('../../GPT_rpixel_assets/track_frame.png', import.meta.url).href,
+  waitingSlotFrame: new URL('../../GPT_rpixel_assets/waiting_slot_frame_256_transparent.png', import.meta.url).href,
+} as const;
+
+type GptAssetKey = keyof typeof GPT_ASSET_SOURCES;
+
 interface CropFrame {
   x: number;
   y: number;
@@ -51,6 +78,27 @@ interface ProcessTextureOptions {
 }
 
 const GEMINI_TEXTURE_PREFIX = 'gemini-source';
+const GPT_TEXTURE_PREFIX = 'gpt-source';
+
+const GPT_BLOCK_ASSETS: Record<PigColor, { key: GptAssetKey; tint?: number }> = {
+  red: { key: 'blockPink' },
+  blue: { key: 'blockBlue' },
+  yellow: { key: 'blockYellow' },
+  green: { key: 'blockCyan', tint: COLOR_STYLES.green.base },
+  purple: { key: 'blockPurple' },
+  orange: { key: 'blockYellow', tint: COLOR_STYLES.orange.base },
+  white: { key: 'blockWhite' },
+};
+
+const GPT_MONSTER_ASSETS: Record<PigColor, { key: GptAssetKey; tint?: number }> = {
+  red: { key: 'monsterPink' },
+  blue: { key: 'monsterBlue' },
+  yellow: { key: 'monsterYellow' },
+  green: { key: 'monsterCyan', tint: COLOR_STYLES.green.base },
+  purple: { key: 'monsterPurple' },
+  orange: { key: 'monsterYellow', tint: COLOR_STYLES.orange.base },
+  white: { key: 'monsterWhite' },
+};
 
 const BLOCK_FRAMES: Record<PigColor, { frame: CropFrame; tint?: number }> = {
   blue: { frame: { x: 218, y: 212, width: 455, height: 452 }, tint: COLOR_STYLES.blue.base },
@@ -91,7 +139,14 @@ export function preloadGeminiAssets(scene: Phaser.Scene): void {
   });
 }
 
+export function preloadGptAssets(scene: Phaser.Scene): void {
+  (Object.entries(GPT_ASSET_SOURCES) as Array<[GptAssetKey, string]>).forEach(([key, url]) => {
+    scene.load.image(gptSourceKey(key), url);
+  });
+}
+
 export function createGeneratedAssets(scene: Phaser.Scene): void {
+  createGptAssetTextures(scene);
   createGeminiAssetTextures(scene);
 
   for (const [color, style] of Object.entries(COLOR_STYLES) as [PigColor, ColorStyle][]) {
@@ -105,6 +160,57 @@ export function createGeneratedAssets(scene: Phaser.Scene): void {
       createShooterTexture(scene, color, style);
     }
   }
+}
+
+function createGptAssetTextures(scene: Phaser.Scene): void {
+  if (!gptAssetsAreReady(scene)) {
+    return;
+  }
+
+  (Object.entries(GPT_BLOCK_ASSETS) as Array<[PigColor, { key: GptAssetKey; tint?: number }]>).forEach(([color, config]) => {
+    createGptProcessedTexture(scene, `block-${color}`, config.key, {
+      target: { width: 128, height: 128 },
+      padding: 5,
+      tint: config.tint,
+    });
+  });
+
+  (Object.entries(GPT_MONSTER_ASSETS) as Array<[PigColor, { key: GptAssetKey; tint?: number }]>).forEach(([color, config]) => {
+    createGptProcessedTexture(scene, `pig-${color}`, config.key, {
+      target: { width: 164, height: 164 },
+      padding: 6,
+      tint: config.tint,
+    });
+    createGptProcessedTexture(scene, `shooter-${color}`, config.key, {
+      target: { width: 164, height: 164 },
+      padding: 6,
+      tint: config.tint,
+    });
+  });
+
+  createGptProcessedTexture(scene, 'gemini-button-base', 'buttonBaseRed', { target: { width: 128, height: 128 }, padding: 3 });
+  createGptProcessedTexture(scene, 'gemini-booster-add', 'iconAddCard', { target: { width: 84, height: 84 }, padding: 5 });
+  createGptProcessedTexture(scene, 'gemini-booster-tap', 'iconTap', { target: { width: 84, height: 84 }, padding: 5 });
+  createGptProcessedTexture(scene, 'gemini-booster-refresh', 'iconRefresh', { target: { width: 86, height: 74 }, padding: 5 });
+  createGptProcessedTexture(scene, 'gemini-booster-rocket', 'iconRocketSnail', { target: { width: 88, height: 88 }, padding: 3 });
+  createGptProcessedTexture(scene, 'gemini-hud-gear', 'hudGear', { target: { width: 86, height: 86 }, padding: 4 });
+  createGptProcessedTexture(scene, 'gemini-hud-coin', 'hudCoin', { target: { width: 84, height: 84 }, padding: 3 });
+  createGptProcessedTexture(scene, 'gemini-hud-plus', 'hudPlus', { target: { width: 74, height: 74 }, padding: 4 });
+  createGptProcessedTexture(scene, 'gemini-track-frame', 'trackFrame', {
+    trim: false,
+    padding: 0,
+    keepLargestComponent: true,
+  });
+  createGptProcessedTexture(scene, 'gemini-waiting-slot-frame', 'waitingSlotFrame', { target: { width: 150, height: 142 }, padding: 2 });
+
+  (window as typeof window & { __RPIXEL_GPT_ASSET_MAP__?: Record<string, string> }).__RPIXEL_GPT_ASSET_MAP__ = {
+    blocks: 'GPT block_*.png -> block-* textures',
+    monsters: 'GPT monster_*.png -> pig-* and shooter-* textures',
+    track: 'GPT track_frame.png -> gemini-track-frame compatibility key',
+    waitingSlots: 'GPT waiting_slot_frame_256_transparent.png -> gemini-waiting-slot-frame compatibility key',
+    hud: 'GPT hud_*.png -> gemini-hud-* compatibility keys',
+    boosters: 'GPT button/icon PNGs -> gemini-button-base and gemini-booster-* compatibility keys',
+  };
 }
 
 function createGeminiAssetTextures(scene: Phaser.Scene): void {
@@ -166,6 +272,57 @@ function geminiSourceKey(key: GeminiSheetKey): string {
   return `${GEMINI_TEXTURE_PREFIX}-${key}`;
 }
 
+function gptAssetsAreReady(scene: Phaser.Scene): boolean {
+  return (Object.keys(GPT_ASSET_SOURCES) as GptAssetKey[]).every((key) => scene.textures.exists(gptSourceKey(key)));
+}
+
+function gptSourceKey(key: GptAssetKey): string {
+  return `${GPT_TEXTURE_PREFIX}-${key}`;
+}
+
+function createGptProcessedTexture(
+  scene: Phaser.Scene,
+  outputKey: string,
+  assetKey: GptAssetKey,
+  options: ProcessTextureOptions = {},
+): void {
+  if (scene.textures.exists(outputKey)) {
+    return;
+  }
+
+  const source = scene.textures.get(gptSourceKey(assetKey)).getSourceImage() as CanvasImageSource;
+  const width = sourceWidth(source);
+  const height = sourceHeight(source);
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+
+  const cropCanvas = document.createElement('canvas');
+  cropCanvas.width = width;
+  cropCanvas.height = height;
+  const cropContext = cropCanvas.getContext('2d');
+  if (!cropContext) {
+    return;
+  }
+
+  cropContext.drawImage(source, 0, 0, width, height);
+  const imageData = cropContext.getImageData(0, 0, width, height);
+  removeGptEdgeBackground(imageData);
+  processGptPixels(imageData, options.tint);
+  if (options.keepLargestComponent) {
+    keepLargestAlphaComponent(imageData);
+  }
+  cropContext.putImageData(imageData, 0, 0);
+
+  const shouldTrim = options.trim !== false;
+  const bounds = shouldTrim ? alphaBounds(imageData) : { x: 0, y: 0, width, height };
+  if (!bounds) {
+    return;
+  }
+
+  addProcessedCanvasTexture(scene, outputKey, cropCanvas, bounds, options);
+}
+
 function createProcessedTexture(
   scene: Phaser.Scene,
   outputKey: string,
@@ -200,6 +357,16 @@ function createProcessedTexture(
     return;
   }
 
+  addProcessedCanvasTexture(scene, outputKey, cropCanvas, bounds, options);
+}
+
+function addProcessedCanvasTexture(
+  scene: Phaser.Scene,
+  outputKey: string,
+  sourceCanvas: HTMLCanvasElement,
+  bounds: { x: number; y: number; width: number; height: number },
+  options: ProcessTextureOptions,
+): void {
   const target = options.target ?? { width: bounds.width, height: bounds.height };
   const padding = options.padding ?? 0;
   const outputCanvas = document.createElement('canvas');
@@ -219,9 +386,119 @@ function createProcessedTexture(
   const drawHeight = bounds.height * scale;
   const drawX = (target.width - drawWidth) / 2;
   const drawY = (target.height - drawHeight) / 2;
-  outputContext.drawImage(cropCanvas, bounds.x, bounds.y, bounds.width, bounds.height, drawX, drawY, drawWidth, drawHeight);
+  outputContext.drawImage(sourceCanvas, bounds.x, bounds.y, bounds.width, bounds.height, drawX, drawY, drawWidth, drawHeight);
 
   scene.textures.addCanvas(outputKey, outputCanvas);
+}
+
+function sourceWidth(source: CanvasImageSource): number {
+  if ('naturalWidth' in source && typeof source.naturalWidth === 'number') {
+    return source.naturalWidth;
+  }
+  if ('videoWidth' in source && typeof source.videoWidth === 'number') {
+    return source.videoWidth;
+  }
+  return 'width' in source && typeof source.width === 'number' ? source.width : 0;
+}
+
+function sourceHeight(source: CanvasImageSource): number {
+  if ('naturalHeight' in source && typeof source.naturalHeight === 'number') {
+    return source.naturalHeight;
+  }
+  if ('videoHeight' in source && typeof source.videoHeight === 'number') {
+    return source.videoHeight;
+  }
+  return 'height' in source && typeof source.height === 'number' ? source.height : 0;
+}
+
+function removeGptEdgeBackground(imageData: ImageData): void {
+  const { data, width, height } = imageData;
+  const visited = new Uint8Array(width * height);
+  const stack: number[] = [];
+  const enqueue = (index: number): void => {
+    if (index < 0 || index >= width * height || visited[index]) {
+      return;
+    }
+    const pixel = index * 4;
+    if (!isGptBackgroundPixel(data[pixel], data[pixel + 1], data[pixel + 2], data[pixel + 3])) {
+      return;
+    }
+    visited[index] = 1;
+    stack.push(index);
+  };
+
+  for (let x = 0; x < width; x += 1) {
+    enqueue(x);
+    enqueue((height - 1) * width + x);
+  }
+  for (let y = 1; y < height - 1; y += 1) {
+    enqueue(y * width);
+    enqueue(y * width + width - 1);
+  }
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (current === undefined) {
+      continue;
+    }
+    const cx = current % width;
+    const cy = Math.floor(current / width);
+    const neighbors = [current - 1, current + 1, current - width, current + width];
+    for (const next of neighbors) {
+      if (next < 0 || next >= width * height || visited[next]) {
+        continue;
+      }
+      const nx = next % width;
+      const ny = Math.floor(next / width);
+      if (Math.abs(nx - cx) + Math.abs(ny - cy) !== 1) {
+        continue;
+      }
+      const pixel = next * 4;
+      if (!isGptBackgroundPixel(data[pixel], data[pixel + 1], data[pixel + 2], data[pixel + 3])) {
+        continue;
+      }
+      visited[next] = 1;
+      stack.push(next);
+    }
+  }
+
+  for (let index = 0; index < width * height; index += 1) {
+    const pixel = index * 4;
+    if (visited[index] || data[pixel + 3] <= 12) {
+      data[pixel + 3] = 0;
+    }
+  }
+}
+
+function processGptPixels(imageData: ImageData, tint?: number): void {
+  const data = imageData.data;
+  const tintHsl = tint === undefined ? undefined : rgbToHsl((tint >> 16) & 255, (tint >> 8) & 255, tint & 255);
+  if (!tintHsl) {
+    return;
+  }
+
+  for (let index = 0; index < data.length; index += 4) {
+    if (data[index + 3] <= 24) {
+      continue;
+    }
+    const hsl = rgbToHsl(data[index], data[index + 1], data[index + 2]);
+    if (hsl.s < 0.12 || hsl.l < 0.1 || hsl.l > 0.92) {
+      continue;
+    }
+    const [r, g, b] = hslToRgb(tintHsl.h, Math.min(0.98, Math.max(hsl.s * 0.82, tintHsl.s * 0.74)), hsl.l);
+    data[index] = r;
+    data[index + 1] = g;
+    data[index + 2] = b;
+  }
+}
+
+function isGptBackgroundPixel(r: number, g: number, b: number, alpha: number): boolean {
+  if (alpha <= 18) {
+    return true;
+  }
+  const average = (r + g + b) / 3;
+  const neutral = Math.max(r, g, b) - Math.min(r, g, b) <= 12;
+  return neutral && average >= 226;
 }
 
 function processGeminiPixels(imageData: ImageData, tint?: number): void {
