@@ -82,11 +82,6 @@ interface TrackStep {
   key: string;
 }
 
-interface ConveyorPlate {
-  container: Phaser.GameObjects.Container;
-  offset: number;
-}
-
 interface ReserveEntry {
   pig: Pig;
   index: number;
@@ -127,8 +122,7 @@ export class GameScene extends Phaser.Scene {
   private slotChromeLayer?: Phaser.GameObjects.Container;
   private reserveLayer?: Phaser.GameObjects.Container;
   private manualHitLayer?: Phaser.GameObjects.Container;
-  private conveyorLayer?: Phaser.GameObjects.Container;
-  private conveyorPlates: ConveyorPlate[] = [];
+  private conveyorMarkerCount = 0;
   private conveyorOffset = 0;
   private blocksLeftText?: Phaser.GameObjects.Text;
   private activeCapacityText?: Phaser.GameObjects.Text;
@@ -170,7 +164,7 @@ export class GameScene extends Phaser.Scene {
     this.clearedCells = 0;
     this.speedMultiplier = 1;
     this.conveyorOffset = 0;
-    this.conveyorPlates = [];
+    this.conveyorMarkerCount = 0;
     this.slots = Array.from({ length: SLOT_CAPACITY }, () => null);
     this.reserveColumns = this.buildReserveColumns(FIRST_LEVEL.pigs);
     this.shotLog = [];
@@ -213,12 +207,8 @@ export class GameScene extends Phaser.Scene {
       graphics.fillRect(0, y, GAME_WIDTH, 12);
     }
 
-    graphics.fillStyle(0xffffff, 0.035);
-    graphics.fillRoundedRect(52, 206, 976, 1060, 42);
-    graphics.fillStyle(0x050915, 0.13);
+    graphics.fillStyle(0x050915, 0.08);
     graphics.fillRoundedRect(84, 1280, 912, 500, 54);
-    graphics.fillStyle(0xffffff, 0.035);
-    graphics.fillRoundedRect(122, 1322, 836, 60, 30);
   }
 
   private drawHud(): void {
@@ -334,52 +324,21 @@ export class GameScene extends Phaser.Scene {
       g.strokeRoundedRect(this.track.left + 28, this.track.top + 28, width - 56, height - 56, 70);
     }
 
-    this.conveyorLayer = this.add.container(0, 0).setDepth(4);
-    this.createConveyorPlates();
+    this.createConveyorMetrics();
     this.updateConveyor(0);
   }
 
-  private createConveyorPlates(): void {
-    if (!this.conveyorLayer) {
-      return;
-    }
-
-    const count = Math.ceil(this.track.total / CONVEYOR_PLATE_SPACING);
-    for (let index = 0; index < count; index += 1) {
-      const plate = this.makeConveyorPlate(80, 20);
-      this.conveyorLayer.add(plate);
-      this.conveyorPlates.push({ container: plate, offset: index * CONVEYOR_PLATE_SPACING });
-    }
-  }
-
-  private makeConveyorPlate(width: number, height: number): Phaser.GameObjects.Container {
-    const container = this.add.container(0, 0);
-    container.add(this.makeRoundRect(width, height, height / 2, 0xdbe6ff, 0.12, 0xffffff, 1, 0.1));
-    container.add(this.makeRoundRect(width * 0.58, height * 0.32, height * 0.16, 0xffffff, 0.1, undefined, 0, 1, -width * 0.06, -height * 0.12));
-    const g = this.add.graphics();
-    g.lineStyle(2, 0x93d9ff, 0.26);
-    g.lineBetween(-width * 0.26, 0, width * 0.28, 0);
-    container.add(g);
-    return container;
+  private createConveyorMetrics(): void {
+    this.conveyorMarkerCount = Math.ceil(this.track.total / CONVEYOR_PLATE_SPACING);
   }
 
   private updateConveyor(delta: number): void {
-    if (!this.conveyorLayer) {
-      return;
-    }
-
     const conveyorMultiplier = this.speedMultiplier === 5 ? CONVEYOR_FAST_MULTIPLIER : 1;
     const scroll = (CONVEYOR_SCROLL_SPEED * conveyorMultiplier * delta) / 1000;
     this.conveyorOffset = (this.conveyorOffset + scroll) % CONVEYOR_PLATE_SPACING;
 
-    this.conveyorPlates.forEach((plate) => {
-      const position = this.positionOnTrack((plate.offset + this.conveyorOffset) % this.track.total);
-      plate.container.setPosition(position.x, position.y);
-      plate.container.setRotation(this.trackRotationFor(position.side));
-    });
-
     window.__RPIXEL_CONVEYOR_OFFSET__ = Number(this.conveyorOffset.toFixed(2));
-    window.__RPIXEL_CONVEYOR_MARKERS__ = this.conveyorPlates.length;
+    window.__RPIXEL_CONVEYOR_MARKERS__ = this.conveyorMarkerCount;
     window.__RPIXEL_TRACK_SPEED__ = TRACK_SPEED;
     window.__RPIXEL_CONVEYOR_SCROLL_SPEED__ = CONVEYOR_SCROLL_SPEED;
     window.__RPIXEL_CONVEYOR_EFFECTIVE_SCROLL_SPEED__ = CONVEYOR_SCROLL_SPEED * conveyorMultiplier;
@@ -393,10 +352,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBoard(): void {
-    this.add.ellipse(this.center.x + 8, this.center.y + this.boardHeight / 2 - 4, this.boardWidth + 92, 50, 0x050915, 0.16).setDepth(4);
-    this.addRoundRect(this.center.x, this.center.y, this.boardWidth + 36, this.boardHeight + 36, 20, 0x1b223b, 0.78, 0x0b1024, 3, 0.54).setDepth(5);
-    this.addRoundRect(this.center.x, this.center.y, this.boardWidth + 12, this.boardHeight + 12, 14, 0x12182d, 0.72, 0xdce7ff, 2, 0.18).setDepth(6);
-
     this.cells = FIRST_LEVEL.grid.map((row, rowIndex) =>
       Array.from({ length: this.cols }, (_, colIndex) => {
         const color = row[colIndex] ?? null;
@@ -1670,7 +1625,7 @@ export class GameScene extends Phaser.Scene {
     window.__RPIXEL_COINS__ = this.coins;
     window.__RPIXEL_SPEED_MULTIPLIER__ = this.speedMultiplier;
     window.__RPIXEL_CONVEYOR_OFFSET__ = Number(this.conveyorOffset.toFixed(2));
-    window.__RPIXEL_CONVEYOR_MARKERS__ = this.conveyorPlates.length;
+    window.__RPIXEL_CONVEYOR_MARKERS__ = this.conveyorMarkerCount;
     window.__RPIXEL_TRACK_SPEED__ = TRACK_SPEED;
     window.__RPIXEL_CONVEYOR_SCROLL_SPEED__ = CONVEYOR_SCROLL_SPEED;
     window.__RPIXEL_CONVEYOR_EFFECTIVE_SCROLL_SPEED__ = CONVEYOR_SCROLL_SPEED * (this.speedMultiplier === 5 ? CONVEYOR_FAST_MULTIPLIER : 1);
