@@ -4,7 +4,7 @@
 - branch: work/20260602-083413-140069-remove-leftover-drawn-field-chrome
 - branch_slug: work__20260602-083413-140069-remove-leftover-drawn-field-chrome
 - created_utc: 2026-06-02T08:34:14Z
-- status: active
+- status: complete
 
 ## Description
 Clean up leftover self-drawn visuals after Gemini asset replacement: remove procedural conveyor markers from the field, remove the dark board backing panel so the field is represented by the Gemini track/field texture, and remove the distracting white four-arrow refresh icon from the lower-right visual area while preserving gameplay coordinates and tests.
@@ -52,3 +52,4 @@ Clean up leftover self-drawn visuals after Gemini asset replacement: remove proc
 - 2026-06-02T08:34:14Z: task created
 - 2026-06-02T08:38:47Z: Remove leftover drawn field chrome
   - pushed_commit: b640189
+- 2026-06-02T08:39:07Z: completed - Mark field chrome cleanup complete
