@@ -18,7 +18,81 @@ export const COLOR_STYLES: Record<PigColor, ColorStyle> = {
   white: { base: 0xf7fbff, dark: 0xa5b3c8, light: 0xffffff, text: 'W' },
 };
 
+
+const GEMINI_ASSET_SOURCES = {
+  blocks: new URL('../../Gemini_rpixel_assets/block_spritesheet.png', import.meta.url).href,
+  boosters: new URL('../../Gemini_rpixel_assets/button_and_icons_spritesheet.png', import.meta.url).href,
+  hud: new URL('../../Gemini_rpixel_assets/hud_icons_spritesheet.png', import.meta.url).href,
+  monsters: new URL('../../Gemini_rpixel_assets/monster_spritesheet.png', import.meta.url).href,
+  track: new URL('../../Gemini_rpixel_assets/track_frame.png', import.meta.url).href,
+  waitingSlot: new URL('../../Gemini_rpixel_assets/waiting_slot_frame.png', import.meta.url).href,
+} as const;
+
+type GeminiSheetKey = keyof typeof GEMINI_ASSET_SOURCES;
+
+interface CropFrame {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface OutputSize {
+  width: number;
+  height: number;
+}
+
+interface ProcessTextureOptions {
+  target?: OutputSize;
+  padding?: number;
+  tint?: number;
+  trim?: boolean;
+}
+
+const GEMINI_TEXTURE_PREFIX = 'gemini-source';
+
+const BLOCK_FRAMES: Record<PigColor, { frame: CropFrame; tint?: number }> = {
+  blue: { frame: { x: 218, y: 212, width: 455, height: 452 }, tint: COLOR_STYLES.blue.base },
+  green: { frame: { x: 865, y: 212, width: 454, height: 453 }, tint: COLOR_STYLES.green.base },
+  yellow: { frame: { x: 1497, y: 212, width: 455, height: 452 }, tint: COLOR_STYLES.yellow.base },
+  red: { frame: { x: 2143, y: 212, width: 454, height: 452 }, tint: COLOR_STYLES.red.base },
+  purple: { frame: { x: 219, y: 853, width: 453, height: 448 }, tint: COLOR_STYLES.purple.base },
+  white: { frame: { x: 866, y: 853, width: 453, height: 448 } },
+  orange: { frame: { x: 1497, y: 212, width: 455, height: 452 }, tint: COLOR_STYLES.orange.base },
+};
+
+const MONSTER_FRAMES: Record<PigColor, { frame: CropFrame; tint?: number }> = {
+  blue: { frame: { x: 129, y: 91, width: 509, height: 582 }, tint: COLOR_STYLES.blue.base },
+  green: { frame: { x: 813, y: 91, width: 508, height: 582 }, tint: COLOR_STYLES.green.base },
+  yellow: { frame: { x: 1495, y: 91, width: 508, height: 582 }, tint: COLOR_STYLES.yellow.base },
+  red: { frame: { x: 2179, y: 91, width: 508, height: 582 }, tint: COLOR_STYLES.red.base },
+  purple: { frame: { x: 449, y: 842, width: 528, height: 581 }, tint: COLOR_STYLES.purple.base },
+  white: { frame: { x: 1143, y: 843, width: 530, height: 581 } },
+  orange: { frame: { x: 1495, y: 91, width: 508, height: 582 }, tint: COLOR_STYLES.orange.base },
+};
+
+const GEMINI_UI_FRAMES = {
+  buttonBase: { sheet: 'boosters', frame: { x: 183, y: 372, width: 796, height: 794 }, target: { width: 128, height: 128 }, padding: 2 },
+  boosterAdd: { sheet: 'boosters', frame: { x: 1231, y: 185, width: 424, height: 524 }, target: { width: 84, height: 84 }, padding: 4 },
+  boosterTap: { sheet: 'boosters', frame: { x: 2063, y: 169, width: 422, height: 528 }, target: { width: 84, height: 84 }, padding: 4 },
+  boosterRefresh: { sheet: 'boosters', frame: { x: 1184, y: 860, width: 505, height: 276 }, target: { width: 86, height: 74 }, padding: 4 },
+  boosterRocket: { sheet: 'boosters', frame: { x: 2016, y: 860, width: 534, height: 527 }, target: { width: 88, height: 88 }, padding: 2 },
+  hudGear: { sheet: 'hud', frame: { x: 278, y: 442, width: 639, height: 645 }, target: { width: 86, height: 86 }, padding: 4 },
+  hudCoin: { sheet: 'hud', frame: { x: 1090, y: 439, width: 636, height: 645 }, target: { width: 84, height: 84 }, padding: 2 },
+  hudPlus: { sheet: 'hud', frame: { x: 1910, y: 457, width: 624, height: 624 }, target: { width: 74, height: 74 }, padding: 4 },
+  trackFrame: { sheet: 'track', frame: { x: 55, y: 73, width: 1810, height: 2085 }, padding: 0 },
+  waitingSlotFrame: { sheet: 'waitingSlot', frame: { x: 797, y: 182, width: 1222, height: 1181 }, target: { width: 150, height: 142 }, padding: 4 },
+} as const;
+
+export function preloadGeminiAssets(scene: Phaser.Scene): void {
+  (Object.entries(GEMINI_ASSET_SOURCES) as Array<[GeminiSheetKey, string]>).forEach(([key, url]) => {
+    scene.load.image(geminiSourceKey(key), url);
+  });
+}
+
 export function createGeneratedAssets(scene: Phaser.Scene): void {
+  createGeminiAssetTextures(scene);
+
   for (const [color, style] of Object.entries(COLOR_STYLES) as [PigColor, ColorStyle][]) {
     if (!scene.textures.exists(`block-${color}`)) {
       createBlockTexture(scene, color, style);
@@ -30,6 +104,227 @@ export function createGeneratedAssets(scene: Phaser.Scene): void {
       createShooterTexture(scene, color, style);
     }
   }
+}
+
+function createGeminiAssetTextures(scene: Phaser.Scene): void {
+  if (!geminiSheetsAreReady(scene)) {
+    return;
+  }
+
+  (Object.entries(BLOCK_FRAMES) as Array<[PigColor, { frame: CropFrame; tint?: number }]>).forEach(([color, config]) => {
+    createProcessedTexture(scene, `block-${color}`, 'blocks', config.frame, {
+      target: { width: 128, height: 128 },
+      padding: 5,
+      tint: config.tint,
+    });
+  });
+
+  (Object.entries(MONSTER_FRAMES) as Array<[PigColor, { frame: CropFrame; tint?: number }]>).forEach(([color, config]) => {
+    createProcessedTexture(scene, `pig-${color}`, 'monsters', config.frame, {
+      target: { width: 164, height: 164 },
+      padding: 4,
+      tint: config.tint,
+    });
+    createProcessedTexture(scene, `shooter-${color}`, 'monsters', config.frame, {
+      target: { width: 164, height: 164 },
+      padding: 4,
+      tint: config.tint,
+    });
+  });
+
+  createProcessedTexture(scene, 'gemini-button-base', 'boosters', GEMINI_UI_FRAMES.buttonBase.frame, GEMINI_UI_FRAMES.buttonBase);
+  createProcessedTexture(scene, 'gemini-booster-add', 'boosters', GEMINI_UI_FRAMES.boosterAdd.frame, GEMINI_UI_FRAMES.boosterAdd);
+  createProcessedTexture(scene, 'gemini-booster-tap', 'boosters', GEMINI_UI_FRAMES.boosterTap.frame, GEMINI_UI_FRAMES.boosterTap);
+  createProcessedTexture(scene, 'gemini-booster-refresh', 'boosters', GEMINI_UI_FRAMES.boosterRefresh.frame, GEMINI_UI_FRAMES.boosterRefresh);
+  createProcessedTexture(scene, 'gemini-booster-rocket', 'boosters', GEMINI_UI_FRAMES.boosterRocket.frame, GEMINI_UI_FRAMES.boosterRocket);
+  createProcessedTexture(scene, 'gemini-hud-gear', 'hud', GEMINI_UI_FRAMES.hudGear.frame, GEMINI_UI_FRAMES.hudGear);
+  createProcessedTexture(scene, 'gemini-hud-coin', 'hud', GEMINI_UI_FRAMES.hudCoin.frame, GEMINI_UI_FRAMES.hudCoin);
+  createProcessedTexture(scene, 'gemini-hud-plus', 'hud', GEMINI_UI_FRAMES.hudPlus.frame, GEMINI_UI_FRAMES.hudPlus);
+  createProcessedTexture(scene, 'gemini-track-frame', 'track', GEMINI_UI_FRAMES.trackFrame.frame, {
+    trim: false,
+    padding: 0,
+  });
+  createProcessedTexture(scene, 'gemini-waiting-slot-frame', 'waitingSlot', GEMINI_UI_FRAMES.waitingSlotFrame.frame, GEMINI_UI_FRAMES.waitingSlotFrame);
+
+  (window as typeof window & { __RPIXEL_GEMINI_ASSET_MAP__?: Record<string, string> }).__RPIXEL_GEMINI_ASSET_MAP__ = {
+    blocks: 'Gemini block_spritesheet.png -> block-* textures',
+    monsters: 'Gemini monster_spritesheet.png -> pig-* and shooter-* textures',
+    track: 'Gemini track_frame.png -> gemini-track-frame',
+    waitingSlots: 'Gemini waiting_slot_frame.png -> gemini-waiting-slot-frame',
+    hud: 'Gemini hud_icons_spritesheet.png -> gemini-hud-* textures',
+    boosters: 'Gemini button_and_icons_spritesheet.png -> gemini-button-base and gemini-booster-* textures',
+  };
+}
+
+function geminiSheetsAreReady(scene: Phaser.Scene): boolean {
+  return (Object.keys(GEMINI_ASSET_SOURCES) as GeminiSheetKey[]).every((key) => scene.textures.exists(geminiSourceKey(key)));
+}
+
+function geminiSourceKey(key: GeminiSheetKey): string {
+  return `${GEMINI_TEXTURE_PREFIX}-${key}`;
+}
+
+function createProcessedTexture(
+  scene: Phaser.Scene,
+  outputKey: string,
+  sheetKey: GeminiSheetKey,
+  frame: CropFrame,
+  options: ProcessTextureOptions = {},
+): void {
+  if (scene.textures.exists(outputKey)) {
+    return;
+  }
+
+  const source = scene.textures.get(geminiSourceKey(sheetKey)).getSourceImage() as CanvasImageSource;
+  const cropCanvas = document.createElement('canvas');
+  cropCanvas.width = frame.width;
+  cropCanvas.height = frame.height;
+  const cropContext = cropCanvas.getContext('2d');
+  if (!cropContext) {
+    return;
+  }
+
+  cropContext.drawImage(source, frame.x, frame.y, frame.width, frame.height, 0, 0, frame.width, frame.height);
+  const imageData = cropContext.getImageData(0, 0, frame.width, frame.height);
+  processGeminiPixels(imageData, options.tint);
+  cropContext.putImageData(imageData, 0, 0);
+
+  const shouldTrim = options.trim !== false;
+  const bounds = shouldTrim ? alphaBounds(imageData) : { x: 0, y: 0, width: frame.width, height: frame.height };
+  if (!bounds) {
+    return;
+  }
+
+  const target = options.target ?? { width: bounds.width, height: bounds.height };
+  const padding = options.padding ?? 0;
+  const outputCanvas = document.createElement('canvas');
+  outputCanvas.width = target.width;
+  outputCanvas.height = target.height;
+  const outputContext = outputCanvas.getContext('2d');
+  if (!outputContext) {
+    return;
+  }
+
+  outputContext.imageSmoothingEnabled = true;
+  outputContext.imageSmoothingQuality = 'high';
+  const maxWidth = Math.max(1, target.width - padding * 2);
+  const maxHeight = Math.max(1, target.height - padding * 2);
+  const scale = Math.min(maxWidth / bounds.width, maxHeight / bounds.height);
+  const drawWidth = bounds.width * scale;
+  const drawHeight = bounds.height * scale;
+  const drawX = (target.width - drawWidth) / 2;
+  const drawY = (target.height - drawHeight) / 2;
+  outputContext.drawImage(cropCanvas, bounds.x, bounds.y, bounds.width, bounds.height, drawX, drawY, drawWidth, drawHeight);
+
+  scene.textures.addCanvas(outputKey, outputCanvas);
+}
+
+function processGeminiPixels(imageData: ImageData, tint?: number): void {
+  const data = imageData.data;
+  const tintHsl = tint === undefined ? undefined : rgbToHsl((tint >> 16) & 255, (tint >> 8) & 255, tint & 255);
+
+  for (let index = 0; index < data.length; index += 4) {
+    const r = data[index];
+    const g = data[index + 1];
+    const b = data[index + 2];
+    if (isGeminiCheckerPixel(r, g, b)) {
+      data[index + 3] = 0;
+      continue;
+    }
+
+    if (!tintHsl) {
+      continue;
+    }
+
+    const hsl = rgbToHsl(r, g, b);
+    if (hsl.s < 0.13 || hsl.l < 0.12 || hsl.l > 0.9) {
+      continue;
+    }
+
+    const [tr, tg, tb] = hslToRgb(tintHsl.h, Math.min(0.95, Math.max(hsl.s * 0.8, tintHsl.s * 0.72)), hsl.l);
+    data[index] = tr;
+    data[index + 1] = tg;
+    data[index + 2] = tb;
+  }
+}
+
+function isGeminiCheckerPixel(r: number, g: number, b: number): boolean {
+  const average = (r + g + b) / 3;
+  return Math.max(r, g, b) - Math.min(r, g, b) <= 8 && average >= 125 && average <= 225;
+}
+
+function alphaBounds(imageData: ImageData): { x: number; y: number; width: number; height: number } | undefined {
+  const { data, width, height } = imageData;
+  let left = width;
+  let right = -1;
+  let top = height;
+  let bottom = -1;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const alpha = data[(y * width + x) * 4 + 3];
+      if (alpha <= 24) {
+        continue;
+      }
+      left = Math.min(left, x);
+      right = Math.max(right, x);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+    }
+  }
+
+  if (right < left || bottom < top) {
+    return undefined;
+  }
+
+  return { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
+}
+
+function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === rn) {
+      h = (gn - bn) / d + (gn < bn ? 6 : 0);
+    } else if (max === gn) {
+      h = (bn - rn) / d + 2;
+    } else {
+      h = (rn - gn) / d + 4;
+    }
+    h /= 6;
+  }
+
+  return { h, s, l };
+}
+
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  if (s === 0) {
+    const value = Math.round(l * 255);
+    return [value, value, value];
+  }
+
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  return [hueToRgb(p, q, h + 1 / 3), hueToRgb(p, q, h), hueToRgb(p, q, h - 1 / 3)].map((value) => Math.round(value * 255)) as [number, number, number];
+}
+
+function hueToRgb(p: number, q: number, t: number): number {
+  let safeT = t;
+  if (safeT < 0) safeT += 1;
+  if (safeT > 1) safeT -= 1;
+  if (safeT < 1 / 6) return p + (q - p) * 6 * safeT;
+  if (safeT < 1 / 2) return q;
+  if (safeT < 2 / 3) return p + (q - p) * (2 / 3 - safeT) * 6;
+  return p;
 }
 
 function createBlockTexture(scene: Phaser.Scene, color: PigColor, style: ColorStyle): void {
