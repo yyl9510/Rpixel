@@ -4,7 +4,7 @@
 - branch: work/20260602-064300-084739-fix-asset-git-lfs-tracking
 - branch_slug: work__20260602-064300-084739-fix-asset-git-lfs-tracking
 - created_utc: 2026-06-02T06:43:00Z
-- status: active
+- status: complete
 
 ## Description
 Fix asset Git LFS tracking after image assets were pushed with absolute .gitattributes paths. Convert rules to repo-relative patterns, renormalize GPT_rpixel_assets and Gemini_rpixel_assets so latest commits store LFS pointer files, verify git lfs ls-files and clean working tree, then merge to main.
@@ -52,3 +52,4 @@ Fix asset Git LFS tracking after image assets were pushed with absolute .gitattr
 - 2026-06-02T06:43:00Z: task created
 - 2026-06-02T06:45:16Z: Fix asset Git LFS tracking
   - pushed_commit: f61ce7e
+- 2026-06-02T06:45:35Z: completed - Mark LFS tracking task complete
