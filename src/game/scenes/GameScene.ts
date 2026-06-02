@@ -225,7 +225,11 @@ export class GameScene extends Phaser.Scene {
     this.add.ellipse(96, 92, 108, 52, 0x050915, 0.22).setDepth(5);
     this.add.circle(94, 82, 52, 0xbd3048).setStrokeStyle(4, 0x20283f, 0.88).setDepth(6);
     this.add.circle(82, 66, 21, 0xffffff, 0.13).setDepth(6);
-    this.drawGearIcon(94, 82, 34, 0xf2f5ff, 0x20283f, 4, 7);
+    if (this.textures.exists('gemini-hud-gear')) {
+      this.add.image(94, 82, 'gemini-hud-gear').setDisplaySize(76, 76).setDepth(8);
+    } else {
+      this.drawGearIcon(94, 82, 34, 0xf2f5ff, 0x20283f, 4, 7);
+    }
     this.add.zone(94, 82, 128, 128).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.scene.start('MenuScene'));
 
     this.add.ellipse(558, 94, 260, 44, 0x050915, 0.18).setDepth(5);
@@ -234,12 +238,20 @@ export class GameScene extends Phaser.Scene {
     this.addRoundRect(552, 57, 206, 15, 8, 0xffffff, 0.1).setDepth(7);
     this.add.text(558, 53, `Level ${FIRST_LEVEL.id}`, this.premiumTextStyle(36)).setOrigin(0.5, 0).setStroke('#11182b', 4).setDepth(8);
 
-    this.add.circle(744, 82, 39, 0xf3bd3c).setStrokeStyle(4, 0x8a5811, 0.82).setDepth(6);
-    this.add.circle(735, 72, 18, 0xfff1a6, 0.35).setDepth(7);
+    if (this.textures.exists('gemini-hud-coin')) {
+      this.add.image(744, 82, 'gemini-hud-coin').setDisplaySize(82, 82).setDepth(7);
+    } else {
+      this.add.circle(744, 82, 39, 0xf3bd3c).setStrokeStyle(4, 0x8a5811, 0.82).setDepth(6);
+      this.add.circle(735, 72, 18, 0xfff1a6, 0.35).setDepth(7);
+    }
     this.coinText = this.add.text(798, 54, this.formatCoins(this.coins), this.premiumTextStyle(36)).setStroke('#11182b', 5).setDepth(8);
     this.addRoundRect(968, 82, 78, 72, 18, 0xd88f2d, 1, 0x7a4a10, 4, 0.86).setDepth(6);
     this.addRoundRect(962, 59, 46, 10, 6, 0xffffff, 0.15).setDepth(7);
-    this.add.text(943, 43, '+', this.premiumTextStyle(55)).setStroke('#8a520f', 5).setDepth(8);
+    if (this.textures.exists('gemini-hud-plus')) {
+      this.add.image(968, 82, 'gemini-hud-plus').setDisplaySize(56, 56).setDepth(8);
+    } else {
+      this.add.text(943, 43, '+', this.premiumTextStyle(55)).setStroke('#8a520f', 5).setDepth(8);
+    }
     this.drawSpeedToggle();
     this.drawActiveCapacityPill();
 
@@ -297,21 +309,30 @@ export class GameScene extends Phaser.Scene {
   private drawTrack(): void {
     const width = this.track.right - this.track.left;
     const height = this.track.bottom - this.track.top;
-    const shadow = this.add.graphics().setDepth(2);
-    shadow.fillStyle(0x050915, 0.2);
-    shadow.fillRoundedRect(this.track.left - 14, this.track.top + 18, width + 28, height + 20, 98);
 
-    const g = this.add.graphics().setDepth(3);
-    g.fillStyle(0x182039, 0.98);
-    g.fillRoundedRect(this.track.left, this.track.top, width, height, 92);
-    g.fillStyle(0x39415f, 0.96);
-    g.fillRoundedRect(this.track.left + 14, this.track.top + 14, width - 28, height - 28, 80);
-    g.fillStyle(0x252d48, 1);
-    g.fillRoundedRect(this.track.left + 44, this.track.top + 44, width - 88, height - 88, 56);
-    g.lineStyle(4, 0xe3edff, 0.24);
-    g.strokeRoundedRect(this.track.left + 17, this.track.top + 17, width - 34, height - 34, 78);
-    g.lineStyle(3, 0x6edcf4, 0.12);
-    g.strokeRoundedRect(this.track.left + 28, this.track.top + 28, width - 56, height - 56, 70);
+    if (this.textures.exists('gemini-track-frame')) {
+      this.add.ellipse(this.center.x + 10, this.center.y + 32, width + 52, height + 78, 0x050915, 0.2).setDepth(2);
+      this.add
+        .image((this.track.left + this.track.right) / 2, (this.track.top + this.track.bottom) / 2, 'gemini-track-frame')
+        .setDisplaySize(width + 58, height + 68)
+        .setDepth(3);
+    } else {
+      const shadow = this.add.graphics().setDepth(2);
+      shadow.fillStyle(0x050915, 0.2);
+      shadow.fillRoundedRect(this.track.left - 14, this.track.top + 18, width + 28, height + 20, 98);
+
+      const g = this.add.graphics().setDepth(3);
+      g.fillStyle(0x182039, 0.98);
+      g.fillRoundedRect(this.track.left, this.track.top, width, height, 92);
+      g.fillStyle(0x39415f, 0.96);
+      g.fillRoundedRect(this.track.left + 14, this.track.top + 14, width - 28, height - 28, 80);
+      g.fillStyle(0x252d48, 1);
+      g.fillRoundedRect(this.track.left + 44, this.track.top + 44, width - 88, height - 88, 56);
+      g.lineStyle(4, 0xe3edff, 0.24);
+      g.strokeRoundedRect(this.track.left + 17, this.track.top + 17, width - 34, height - 34, 78);
+      g.lineStyle(3, 0x6edcf4, 0.12);
+      g.strokeRoundedRect(this.track.left + 28, this.track.top + 28, width - 56, height - 56, 70);
+    }
 
     this.conveyorLayer = this.add.container(0, 0).setDepth(4);
     this.createConveyorPlates();
@@ -407,7 +428,11 @@ export class GameScene extends Phaser.Scene {
     this.slotChromeLayer = this.add.container(0, 0).setDepth(10);
     for (let index = 0; index < SLOT_CAPACITY; index += 1) {
       const position = this.slotPosition(index);
-      this.slotChromeLayer.add(this.makeRoundRect(150, 142, 28, 0x050915, 0.08, 0xdce7ff, 2, 0.12, position.x, position.y));
+      if (this.textures.exists('gemini-waiting-slot-frame')) {
+        this.slotChromeLayer.add(this.add.image(position.x, position.y, 'gemini-waiting-slot-frame').setDisplaySize(150, 142));
+      } else {
+        this.slotChromeLayer.add(this.makeRoundRect(150, 142, 28, 0x050915, 0.08, 0xdce7ff, 2, 0.12, position.x, position.y));
+      }
     }
   }
 
@@ -456,10 +481,14 @@ export class GameScene extends Phaser.Scene {
     boosters.forEach((booster) => {
       const buttonY = 1836;
       layer.add(this.add.ellipse(booster.x + 3, buttonY + 18, 118, 34, 0x050915, 0.2));
-      layer.add(this.add.circle(booster.x, buttonY, 62, 0x20283e).setStrokeStyle(5, 0xdce7ff, 0.68));
-      layer.add(this.add.circle(booster.x, buttonY, 53, 0xd94a5d, 0.88).setStrokeStyle(2, 0x10182d, 0.7));
-      layer.add(this.add.circle(booster.x - 13, buttonY - 18, 23, 0xffffff, 0.16));
-      layer.add(this.add.circle(booster.x, buttonY, 43, 0xff7d82, 0.18));
+      if (this.textures.exists('gemini-button-base')) {
+        layer.add(this.add.image(booster.x, buttonY, 'gemini-button-base').setDisplaySize(128, 128));
+      } else {
+        layer.add(this.add.circle(booster.x, buttonY, 62, 0x20283e).setStrokeStyle(5, 0xdce7ff, 0.68));
+        layer.add(this.add.circle(booster.x, buttonY, 53, 0xd94a5d, 0.88).setStrokeStyle(2, 0x10182d, 0.7));
+        layer.add(this.add.circle(booster.x - 13, buttonY - 18, 23, 0xffffff, 0.16));
+        layer.add(this.add.circle(booster.x, buttonY, 43, 0xff7d82, 0.18));
+      }
       this.drawBoosterIcon(layer, booster.x, buttonY, booster.type);
       layer.add(this.add.circle(booster.x + 66, buttonY + 56, 25, 0xb91f34).setStrokeStyle(3, 0x5d0712, 0.86));
       layer.add(this.add.text(booster.x + 66, buttonY + 39, booster.count, this.premiumTextStyle(24)).setOrigin(0.5, 0).setStroke('#11182b', 4));
@@ -467,6 +496,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBoosterIcon(layer: Phaser.GameObjects.Container, x: number, y: number, type: string): void {
+    const geminiIcon = {
+      add: 'gemini-booster-add',
+      tap: 'gemini-booster-tap',
+      refresh: 'gemini-booster-refresh',
+      rocket: 'gemini-booster-rocket',
+    }[type];
+    if (geminiIcon && this.textures.exists(geminiIcon)) {
+      const displaySize = type === 'refresh' ? { width: 72, height: 62 } : type === 'rocket' ? { width: 74, height: 74 } : { width: 66, height: 66 };
+      layer.add(this.add.image(x, y, geminiIcon).setDisplaySize(displaySize.width, displaySize.height));
+      return;
+    }
+
     if (type === 'add') {
       layer.add(this.makeRoundRect(54, 68, 10, 0xffffff, 0.98, 0x11182b, 4, 0.9, x - 8, y - 4));
       layer.add(this.makeRoundRect(44, 56, 9, 0xf4f7ff, 0.98, 0x11182b, 4, 0.9, x + 9, y + 4));
