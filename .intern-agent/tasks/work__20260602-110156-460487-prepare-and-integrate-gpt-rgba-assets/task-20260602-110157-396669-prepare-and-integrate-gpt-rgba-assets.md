@@ -52,3 +52,4 @@ Pull latest GPT RGBA assets, add preprocessing to clean edge-connected gray/whit
 - 2026-06-02T11:09:53Z: Prepare and integrate GPT RGBA assets
   - pushed_commit: 272a186
 - 2026-06-02T11:10:14Z: completed - Mark GPT RGBA asset integration complete
+  - pushed_commit: c663ec2
