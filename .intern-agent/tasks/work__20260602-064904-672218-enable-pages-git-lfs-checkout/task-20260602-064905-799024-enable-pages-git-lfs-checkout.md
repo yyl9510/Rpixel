@@ -4,7 +4,7 @@
 - branch: work/20260602-064904-672218-enable-pages-git-lfs-checkout
 - branch_slug: work__20260602-064904-672218-enable-pages-git-lfs-checkout
 - created_utc: 2026-06-02T06:49:05Z
-- status: active
+- status: complete
 
 ## Description
 Ensure GitHub Pages workflow checks out Git LFS files so generated image assets are available as real PNGs during future builds.
@@ -14,22 +14,26 @@ Ensure GitHub Pages workflow checks out Git LFS files so generated image assets 
 Ensure GitHub Pages workflow checks out Git LFS files so generated image assets are available as real PNGs during future builds.
 
 ### Assigned Scope
-- TODO: summarize the agreed scope before delegating or implementing.
+- Update the GitHub Pages workflow so `actions/checkout` downloads Git LFS files during CI builds.
+- Keep the change limited to deployment workflow configuration.
 
 ### Deliverables
-- TODO: list expected files, artifacts, decisions, or reports.
+- `.github/workflows/deploy.yml` checkout step includes `with: lfs: true`.
 
 ### Validation Plan
-- TODO: list tests, commands, source checks, or review criteria.
+- Inspect workflow diff.
+- Merge to `main`, push, and verify the triggered Pages workflow completes successfully.
 
 ### Constraints And Non-Goals
-- TODO: list constraints such as no restart, no unrelated refactors, file ownership, or deployment limits.
+- Do not modify gameplay or asset content.
+- Do not change build, test, or deploy job ordering beyond LFS checkout configuration.
 
 ### Claimed Output
-- TODO: fill when reporting completion.
+- Enabled Git LFS checkout in the Pages workflow so generated image assets will be real PNG files in future builds that import them.
 
 ### Artifacts And Evidence
-- TODO: fill with changed files, commits, generated artifacts, logs, screenshots, or test output.
+- `git diff -- .github/workflows/deploy.yml` shows only the `lfs: true` checkout configuration.
 
 ## Steps
 - 2026-06-02T06:49:05Z: task created
+- 2026-06-02T06:49:42Z: completed - Enable Pages Git LFS checkout
