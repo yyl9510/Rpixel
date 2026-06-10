@@ -44,3 +44,4 @@ Remove the camera shake from block-clearing animation while keeping the other pr
 - 2026-06-10T08:03:38Z: Remove block clear screen shake
   - pushed_commit: 68bdd96
 - 2026-06-10T08:03:59Z: completed - Mark block shake removal complete
+  - pushed_commit: 5752a86
