@@ -30,6 +30,7 @@ const RESERVE_HIT_WIDTH = 178;
 const RESERVE_HIT_HEIGHT = 178;
 const WAITING_HIT_WIDTH = 178;
 const WAITING_HIT_HEIGHT = 170;
+const LAUNCH_TRAIL_STEP = 0.16;
 
 type Side = 'bottom' | 'right' | 'top' | 'left';
 type SlotStatus = 'entering' | 'stuck' | 'activating';
@@ -408,13 +409,32 @@ export class GameScene extends Phaser.Scene {
       const motionStart = this.reserveMotionStarts.get(entry.pig.id);
       if (motionStart) {
         token.setPosition(motionStart.x, motionStart.y);
-        this.tweens.add({
-          targets: token,
-          x: position.x,
-          y: position.y,
-          alpha: locked ? 0.74 : 1,
-          duration: 240,
-          ease: 'Sine.easeOut',
+        let lastTrail = 0;
+        const startX = motionStart.x;
+        const startY = motionStart.y;
+        this.tweens.addCounter({
+          from: 0,
+          to: 1,
+          delay: Math.max(0, entry.row) * 34,
+          duration: 340,
+          ease: 'Back.easeOut',
+          onUpdate: (tween) => {
+            const progress = Number(tween.getValue());
+            const lift = Math.sin(progress * Math.PI) * 20;
+            const stretch = Math.sin(progress * Math.PI) * 0.045;
+            token.setPosition(Phaser.Math.Linear(startX, position.x, progress), Phaser.Math.Linear(startY, position.y, progress) - lift);
+            token.setScale(0.9 * (1 + stretch), 0.9 * (1 - stretch * 0.55));
+            token.setAlpha(Phaser.Math.Linear(token.alpha, locked ? 0.74 : 1, 0.32));
+            if (progress - lastTrail >= LAUNCH_TRAIL_STEP) {
+              lastTrail = progress;
+              this.spawnShooterTrail(entry.pig.color, token.x, token.y + 10, token.scaleX * 0.88, 0, 11, 0.12);
+            }
+          },
+          onComplete: () => {
+            token.setPosition(position.x, position.y);
+            token.setScale(0.9);
+            token.setAlpha(locked ? 0.74 : 1);
+          },
         });
       }
       this.reserveLabelDebug.push(token.ammoLabelDebug(entry.index, entry.pig.id));
@@ -534,7 +554,7 @@ export class GameScene extends Phaser.Scene {
     this.captureReserveAdvanceMotion(entry);
     const [pig] = this.reserveColumns[entry.col].splice(entry.row, 1);
     const launchingPig = { ...pig, mystery: false };
-    const token = this.createPigToken(launchingPig, reservePosition.x, reservePosition.y, 0.68, false, undefined, false);
+    const token = this.createPigToken(launchingPig, reservePosition.x, reservePosition.y, 0.9, false, undefined, false);
     token.setDepth(24);
 
     this.renderReserve();
@@ -593,27 +613,40 @@ export class GameScene extends Phaser.Scene {
     const startScale = active.container.scaleX;
     const startX = active.container.x;
     const startY = active.container.y;
+    const controlX = (startX + entryPosition.x) / 2;
+    const controlY = Math.min(startY, entryPosition.y) - 150;
+    let lastTrail = 0;
+    this.emitLaunchDust(startX, startY + 42, pig.color);
 
     this.tweens.add({
       targets: active.container,
-      scale: startScale * 0.9,
-      duration: 70,
+      scaleX: startScale * 1.08,
+      scaleY: startScale * 0.84,
+      duration: 82,
       yoyo: true,
-      ease: 'Quad.easeInOut',
+      ease: 'Sine.easeInOut',
       onUpdate: () => this.faceTrackSide(active, 'bottom'),
       onComplete: () => {
         this.tweens.addCounter({
           from: 0,
           to: 1,
-          duration: 260,
-          ease: 'Sine.easeOut',
+          duration: 430,
+          ease: 'Cubic.easeOut',
           onUpdate: (tween) => {
             const progress = Number(tween.getValue());
-            const lift = Math.sin(progress * Math.PI) * 30;
-            active.container.setPosition(Phaser.Math.Linear(startX, entryPosition.x, progress), Phaser.Math.Linear(startY, entryPosition.y, progress) - lift);
-            active.container.setScale(Phaser.Math.Linear(startScale, TRACK_SHOOTER_SCALE, progress));
-            active.container.setAngle(Phaser.Math.Linear(active.container.angle, 0, progress));
+            const stretch = Math.sin(progress * Math.PI) * 0.09;
+            active.container.setPosition(
+              this.quadraticBezier(startX, controlX, entryPosition.x, progress),
+              this.quadraticBezier(startY, controlY, entryPosition.y, progress),
+            );
+            const scale = Phaser.Math.Linear(startScale, TRACK_SHOOTER_SCALE, progress);
+            active.container.setScale(scale * (1 + stretch), scale * (1 - stretch * 0.6));
+            active.container.setAngle(Math.sin(progress * Math.PI) * (startX < entryPosition.x ? 6 : -6));
             this.faceTrackSide(active, 'bottom');
+            if (progress - lastTrail >= LAUNCH_TRAIL_STEP) {
+              lastTrail = progress;
+              this.spawnShooterTrail(active.pig.color, active.container.x, active.container.y + 8, scale * 0.92, active.container.angle, 18, 0.16);
+            }
           },
           onComplete: () => {
             active.distance = 0;
@@ -622,6 +655,7 @@ export class GameScene extends Phaser.Scene {
             active.container.setAngle(0);
             active.orbiting = true;
             this.faceTrackSide(active, 'bottom');
+            this.playTokenSettle(active.container, TRACK_SHOOTER_SCALE, active.pig.color, 24);
             this.tryFireAtCurrentTrackStep(active);
           },
         });
@@ -702,14 +736,29 @@ export class GameScene extends Phaser.Scene {
     projectile.add(this.add.circle(-6, 7, 20, style.dark, 0.62));
     projectile.add(this.add.circle(0, 0, 18, style.base, 1).setStrokeStyle(4, style.dark, 0.9));
     projectile.add(this.add.circle(-5, -6, 6, style.light, 0.92));
-    this.tweens.add({ targets: target.image, scale: target.image.scaleX * 1.14, duration: 75, yoyo: true, ease: 'Quad.easeOut' });
-    this.tweens.add({
-      targets: projectile,
-      x: target.image.x,
-      y: target.image.y,
-      scale: 0.78,
-      duration: 58,
-      ease: 'Quad.easeOut',
+    this.playShooterRecoil(active, step.side);
+    this.tweens.add({ targets: target.image, scale: target.image.scaleX * 1.16, duration: 86, yoyo: true, ease: 'Quad.easeOut' });
+    const startX = active.container.x;
+    const startY = active.container.y;
+    const endX = target.image.x;
+    const endY = target.image.y;
+    const controlX = (startX + endX) / 2;
+    const controlY = (startY + endY) / 2 - 34;
+    let lastTrail = 0;
+    this.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: 128,
+      ease: 'Quad.easeIn',
+      onUpdate: (tween) => {
+        const progress = Number(tween.getValue());
+        projectile.setPosition(this.quadraticBezier(startX, controlX, endX, progress), this.quadraticBezier(startY, controlY, endY, progress));
+        projectile.setScale(Phaser.Math.Linear(1, 0.74, progress));
+        if (progress - lastTrail >= 0.22) {
+          lastTrail = progress;
+          this.spawnProjectileTrail(projectile.x, projectile.y, style.base, style.light);
+        }
+      },
       onComplete: () => {
         projectile.destroy();
         this.clearCell(target);
@@ -738,6 +787,18 @@ export class GameScene extends Phaser.Scene {
 
     const style = COLOR_STYLES[cell.color];
     this.tweens.killTweensOf(cell.image);
+    this.cameras.main.shake(70, 0.0022);
+    cell.image.setTintFill(0xffffff);
+    this.time.delayedCall(44, () => cell.image.clearTint());
+    const pop = this.add.image(cell.image.x, cell.image.y, `block-${cell.color}`).setDepth(23).setScale(cell.image.scaleX * 1.05).setAlpha(0.48).setTint(0xffffff);
+    this.tweens.add({
+      targets: pop,
+      scale: cell.image.scaleX * 1.48,
+      alpha: 0,
+      duration: 170,
+      ease: 'Cubic.easeOut',
+      onComplete: () => pop.destroy(),
+    });
     const flash = this.add.rectangle(cell.image.x, cell.image.y, this.cellSize * 1.05, this.cellSize * 1.05, 0xffffff, 0.58).setDepth(24).setScale(0.25);
     this.tweens.add({
       targets: flash,
@@ -837,22 +898,25 @@ export class GameScene extends Phaser.Scene {
     this.resolvingShooters.splice(index, 1);
     this.tweens.killTweensOf(active.container);
     this.emitShooterExhaustBurst(active.container.x, active.container.y, active.pig.color);
+    this.spawnShooterTrail(active.pig.color, active.container.x, active.container.y + 12, active.container.scaleX, active.container.angle, 24, 0.22);
     this.tweens.add({
       targets: active.container,
-      y: active.container.y + 24,
-      scale: active.container.scaleX * 1.12,
-      angle: active.container.angle + 5,
-      duration: 95,
+      y: active.container.y + 18,
+      scaleX: active.container.scaleX * 1.18,
+      scaleY: active.container.scaleY * 0.78,
+      angle: active.container.angle + 7,
+      duration: 110,
       ease: 'Quad.easeOut',
       onComplete: () => {
         this.tweens.add({
           targets: active.container,
-          y: active.container.y - 36,
-          scale: 0.18,
-          angle: active.container.angle - 18,
+          y: active.container.y - 42,
+          scaleX: 0.12,
+          scaleY: 0.24,
+          angle: active.container.angle - 26,
           alpha: 0,
-          duration: 260,
-          ease: 'Back.easeIn',
+          duration: 300,
+          ease: 'Cubic.easeIn',
           onComplete: () => active.container.destroy(),
         });
       },
@@ -941,27 +1005,34 @@ export class GameScene extends Phaser.Scene {
       if (Math.abs(slot.container.x - position.x) < 0.5 && Math.abs(slot.container.y - position.y) < 0.5) {
         return;
       }
-      this.tweenWaitingSlotShift(slot, position);
+      this.tweenWaitingSlotShift(slot, position, index * 28);
     });
     this.renderManualLaunchHitZones();
   }
 
-  private tweenWaitingSlotShift(slot: SlotShooter, position: { x: number; y: number }): void {
+  private tweenWaitingSlotShift(slot: SlotShooter, position: { x: number; y: number }, delay = 0): void {
     const startX = slot.container.x;
     const startY = slot.container.y;
     const startScale = slot.container.scaleX;
+    let lastTrail = 0;
     this.stopSlotMotion(slot);
     slot.moveTween = this.tweens.addCounter({
       from: 0,
       to: 1,
-      duration: 280,
-      ease: 'Sine.easeInOut',
+      delay,
+      duration: 360,
+      ease: 'Back.easeOut',
       onUpdate: (tween) => {
         const progress = Number(tween.getValue());
-        const lift = Math.sin(progress * Math.PI) * 18;
-        const settle = Math.sin(progress * Math.PI) * 0.025;
+        const lift = Math.sin(progress * Math.PI) * 24;
+        const settle = Math.sin(progress * Math.PI) * 0.055;
         slot.container.setPosition(Phaser.Math.Linear(startX, position.x, progress), Phaser.Math.Linear(startY, position.y, progress) - lift);
-        slot.container.setScale(Phaser.Math.Linear(startScale, WAITING_SHOOTER_SCALE, progress) * (1 + settle));
+        const scale = Phaser.Math.Linear(startScale, WAITING_SHOOTER_SCALE, progress);
+        slot.container.setScale(scale * (1 + settle), scale * (1 - settle * 0.45));
+        if (progress - lastTrail >= 0.24) {
+          lastTrail = progress;
+          this.spawnShooterTrail(slot.pig.color, slot.container.x, slot.container.y + 8, scale * 0.85, 0, 11, 0.11);
+        }
       },
       onComplete: () => {
         slot.moveTween = undefined;
@@ -970,26 +1041,40 @@ export class GameScene extends Phaser.Scene {
         }
         slot.container.setPosition(position.x, position.y);
         slot.container.setScale(WAITING_SHOOTER_SCALE);
+        this.playTokenSettle(slot.container, WAITING_SHOOTER_SCALE, slot.pig.color, 19);
       },
     });
   }
 
   private tweenEnteringSlotToAssignedPosition(slot: SlotShooter, active: ResolvingShooter, duration: number): void {
     this.stopSlotMotion(slot);
+    const startX = slot.container.x;
+    const startY = slot.container.y;
+    const startScale = slot.container.scaleX;
+    const end = this.slotPosition(slot.slotIndex);
+    const controlX = (startX + end.x) / 2;
+    const controlY = Math.min(startY, end.y) - 120;
+    let lastTrail = 0;
     slot.moveTween = this.tweens.addCounter({
       from: 0,
       to: 1,
-      duration,
-      ease: 'Sine.easeOut',
+      duration: Math.max(duration, 470),
+      ease: 'Cubic.easeOut',
       onUpdate: (tween) => {
         const progress = Number(tween.getValue());
-        const arc = Math.sin(progress * Math.PI) * 70;
-        const position = this.slotPosition(slot.slotIndex);
-        slot.container.setPosition(Phaser.Math.Linear(slot.container.x, position.x, 0.18), Phaser.Math.Linear(slot.container.y, position.y - arc, 0.18));
-        slot.container.setScale(Phaser.Math.Linear(slot.container.scaleX, WAITING_SHOOTER_SCALE, 0.18));
+        const stretch = Math.sin(progress * Math.PI) * 0.075;
+        slot.container.setPosition(this.quadraticBezier(startX, controlX, end.x, progress), this.quadraticBezier(startY, controlY, end.y, progress));
+        const scale = Phaser.Math.Linear(startScale, WAITING_SHOOTER_SCALE, progress);
+        slot.container.setScale(scale * (1 + stretch), scale * (1 - stretch * 0.5));
         this.faceTrackSide(active, 'bottom');
+        if (progress - lastTrail >= LAUNCH_TRAIL_STEP) {
+          lastTrail = progress;
+          this.spawnShooterTrail(slot.pig.color, slot.container.x, slot.container.y + 8, scale * 0.9, slot.container.angle, 18, 0.14);
+        }
       },
       onComplete: () => {
+        slot.container.setPosition(end.x, end.y);
+        slot.container.setScale(WAITING_SHOOTER_SCALE);
         slot.moveTween = undefined;
         this.settleEnteringSlot(slot, active);
       },
@@ -1006,11 +1091,11 @@ export class GameScene extends Phaser.Scene {
       from: 0,
       to: 1,
       duration: 160,
-      ease: 'Sine.easeOut',
+      ease: 'Back.easeOut',
       onUpdate: () => {
         const position = this.slotPosition(slot.slotIndex);
-        slot.container.setPosition(Phaser.Math.Linear(slot.container.x, position.x, 0.24), Phaser.Math.Linear(slot.container.y, position.y, 0.24));
-        slot.container.setScale(Phaser.Math.Linear(slot.container.scaleX, WAITING_SHOOTER_SCALE, 0.24));
+        slot.container.setPosition(Phaser.Math.Linear(slot.container.x, position.x, 0.28), Phaser.Math.Linear(slot.container.y, position.y, 0.28));
+        slot.container.setScale(Phaser.Math.Linear(slot.container.scaleX, WAITING_SHOOTER_SCALE * 1.04, 0.2), Phaser.Math.Linear(slot.container.scaleY, WAITING_SHOOTER_SCALE * 0.96, 0.2));
         this.faceTrackSide(active, 'bottom');
       },
       onComplete: () => {
@@ -1034,6 +1119,7 @@ export class GameScene extends Phaser.Scene {
     slot.container.setPosition(position.x, position.y);
     slot.container.setScale(WAITING_SHOOTER_SCALE);
     slot.status = 'stuck';
+    this.playTokenSettle(slot.container, WAITING_SHOOTER_SCALE, slot.pig.color, 19);
     this.bindPigTokenClick(slot.container, WAITING_SHOOTER_SCALE, () => this.handleSlotClick(slot.slotIndex));
     this.renderManualLaunchHitZones();
     this.updateDebugState();
@@ -1201,7 +1287,8 @@ export class GameScene extends Phaser.Scene {
     container.setInteractive(new Phaser.Geom.Rectangle(-89, -89, 178, 178), Phaser.Geom.Rectangle.Contains);
     container.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       this.lastDirectPigPointerStamp = this.pointerEventStamp(pointer);
-      this.tweens.add({ targets: container, scale: scale * 0.9, duration: 65, yoyo: true });
+      this.playClickPulse(container.x, container.y, 0xffffff, 19);
+      this.tweens.add({ targets: container, scaleX: scale * 1.08, scaleY: scale * 0.84, duration: 76, yoyo: true, ease: 'Sine.easeInOut' });
       onClick();
     });
   }
@@ -1409,6 +1496,115 @@ export class GameScene extends Phaser.Scene {
     g.fillCircle(x, y, radius * 0.28);
     g.lineStyle(Math.max(3, strokeWidth - 2), stroke, 1);
     g.strokeCircle(x, y, radius * 0.28);
+  }
+
+  private quadraticBezier(start: number, control: number, end: number, progress: number): number {
+    const inverse = 1 - progress;
+    return inverse * inverse * start + 2 * inverse * progress * control + progress * progress * end;
+  }
+
+  private spawnShooterTrail(color: PigColor, x: number, y: number, scale: number, angle: number, depth: number, alpha: number): void {
+    const textureKey = `shooter-${color}`;
+    if (!this.textures.exists(textureKey)) {
+      return;
+    }
+
+    const ghost = this.add.image(x, y, textureKey).setDepth(depth).setScale(scale).setAngle(angle).setAlpha(alpha).setTint(0xffffff);
+    this.tweens.add({
+      targets: ghost,
+      alpha: 0,
+      scale: scale * 1.12,
+      duration: 260,
+      ease: 'Sine.easeOut',
+      onComplete: () => ghost.destroy(),
+    });
+  }
+
+  private spawnProjectileTrail(x: number, y: number, baseColor: number, lightColor: number): void {
+    const dot = this.add.circle(x, y, Phaser.Math.Between(7, 12), baseColor, 0.3).setDepth(22);
+    const core = this.add.circle(x - 2, y - 2, Phaser.Math.Between(3, 6), lightColor, 0.55).setDepth(23);
+    this.tweens.add({ targets: dot, scale: 0.25, alpha: 0, duration: 130, ease: 'Quad.easeOut', onComplete: () => dot.destroy() });
+    this.tweens.add({ targets: core, scale: 0.1, alpha: 0, duration: 110, ease: 'Quad.easeOut', onComplete: () => core.destroy() });
+  }
+
+  private emitLaunchDust(x: number, y: number, color: PigColor): void {
+    const style = COLOR_STYLES[color];
+    for (let index = 0; index < 8; index += 1) {
+      const dust = this.add.ellipse(x + Phaser.Math.Between(-30, 30), y + Phaser.Math.Between(-10, 16), Phaser.Math.Between(18, 34), Phaser.Math.Between(8, 16), index % 2 === 0 ? style.light : 0xffffff, 0.22).setDepth(13);
+      this.tweens.add({
+        targets: dust,
+        x: dust.x + Phaser.Math.Between(-28, 28),
+        y: dust.y + Phaser.Math.Between(4, 28),
+        scale: 0.4,
+        alpha: 0,
+        duration: Phaser.Math.Between(180, 290),
+        ease: 'Quad.easeOut',
+        onComplete: () => dust.destroy(),
+      });
+    }
+  }
+
+  private playClickPulse(x: number, y: number, color: number, depth: number): void {
+    const ring = this.add.circle(x, y, 58, color, 0).setStrokeStyle(5, color, 0.36).setDepth(depth);
+    this.tweens.add({
+      targets: ring,
+      scale: 1.55,
+      alpha: 0,
+      duration: 210,
+      ease: 'Cubic.easeOut',
+      onComplete: () => ring.destroy(),
+    });
+  }
+
+  private playTokenSettle(token: ShooterToken, baseScale: number, color: PigColor, depth: number): void {
+    if (!token.active) {
+      return;
+    }
+
+    this.playClickPulse(token.x, token.y + 8, COLOR_STYLES[color].light, depth);
+    this.tweens.add({
+      targets: token,
+      scaleX: baseScale * 1.08,
+      scaleY: baseScale * 0.9,
+      duration: 82,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: token,
+          scaleX: baseScale,
+          scaleY: baseScale,
+          duration: 120,
+          ease: 'Back.easeOut',
+        });
+      },
+    });
+  }
+
+  private playShooterRecoil(active: ResolvingShooter, side: Side): void {
+    const offsets: Record<Side, { x: number; y: number }> = {
+      bottom: { x: 0, y: 16 },
+      right: { x: 16, y: 0 },
+      top: { x: 0, y: -16 },
+      left: { x: -16, y: 0 },
+    };
+    const offset = offsets[side];
+    this.tweens.killTweensOf(active.body);
+    active.body.setPosition(0, 0);
+    active.body.setScale(1);
+    this.tweens.add({
+      targets: active.body,
+      x: offset.x,
+      y: offset.y,
+      scaleX: 1.06,
+      scaleY: 0.94,
+      duration: 62,
+      yoyo: true,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        active.body.setPosition(0, 0);
+        active.body.setScale(1);
+      },
+    });
   }
 
   private isResolvingActive(active: ResolvingShooter): boolean {
