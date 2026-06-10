@@ -4,7 +4,7 @@
 - branch: work/20260610-080146-826407-remove-block-clear-screen-shake
 - branch_slug: work__20260610-080146-826407-remove-block-clear-screen-shake
 - created_utc: 2026-06-10T08:01:47Z
-- status: active
+- status: complete
 
 ## Description
 Remove the camera shake from block-clearing animation while keeping the other procedural animation polish intact; explain how the remaining no-new-art animation effects are implemented.
@@ -43,3 +43,4 @@ Remove the camera shake from block-clearing animation while keeping the other pr
 - 2026-06-10T08:01:47Z: task created
 - 2026-06-10T08:03:38Z: Remove block clear screen shake
   - pushed_commit: 68bdd96
+- 2026-06-10T08:03:59Z: completed - Mark block shake removal complete
