@@ -787,7 +787,6 @@ export class GameScene extends Phaser.Scene {
 
     const style = COLOR_STYLES[cell.color];
     this.tweens.killTweensOf(cell.image);
-    this.cameras.main.shake(70, 0.0022);
     cell.image.setTintFill(0xffffff);
     this.time.delayedCall(44, () => cell.image.clearTint());
     const pop = this.add.image(cell.image.x, cell.image.y, `block-${cell.color}`).setDepth(23).setScale(cell.image.scaleX * 1.05).setAlpha(0.48).setTint(0xffffff);

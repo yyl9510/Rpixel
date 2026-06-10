@@ -14,22 +14,31 @@ Remove the camera shake from block-clearing animation while keeping the other pr
 Remove the camera shake from block-clearing animation while keeping the other procedural animation polish intact; explain how the remaining no-new-art animation effects are implemented.
 
 ### Assigned Scope
-- TODO: summarize the agreed scope before delegating or implementing.
+- Remove camera/screen shake from the block-clearing animation only.
+- Preserve the rest of the no-new-art procedural animation polish.
+- Explain how the remaining animation polish is implemented.
 
 ### Deliverables
-- TODO: list expected files, artifacts, decisions, or reports.
+- `src/game/scenes/GameScene.ts`: remove the `this.cameras.main.shake(...)` call inside `clearCell`.
+- Keep flash tint, expanding silhouette, shards/particles, shrink-out, shooter motion polish, projectile trails, and click feedback unchanged.
 
 ### Validation Plan
-- TODO: list tests, commands, source checks, or review criteria.
+- `npm run check`
+- `npm run test:smoke`
 
 ### Constraints And Non-Goals
-- TODO: list constraints such as no restart, no unrelated refactors, file ownership, or deployment limits.
+- Do not revert the other animation improvements.
+- Do not add new art or dependencies.
 
 ### Claimed Output
-- TODO: fill when reporting completion.
+- Removed the only camera shake call from block clearing.
+- Other procedural animation effects remain in place.
 
 ### Artifacts And Evidence
-- TODO: fill with changed files, commits, generated artifacts, logs, screenshots, or test output.
+- Changed file: `src/game/scenes/GameScene.ts`.
+- `npm run check`: passed.
+- `npm run test:smoke`: 8 passed.
 
 ## Steps
 - 2026-06-10T08:01:47Z: task created
+- 2026-06-10T08:03:38Z: Remove block clear screen shake
